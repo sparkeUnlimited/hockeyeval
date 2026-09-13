@@ -265,14 +265,21 @@ describe("Mutation.upsertPlayers", () => {
 
 // ---------------------------------------------------------------- tryout assembly
 describe("currentTryout pipeline", () => {
-  test("pointer step early-returns null when no tryout exists, otherwise stashes id", async () => {
+  test("pointer step returns null (no stash) when no tryout exists, otherwise stashes id", async () => {
     const mod = await loadResolver("Query.currentTryout.1.getPointer.js");
     const req = mod.request(ctx({}));
     assert.deepEqual(fromMapValues(req.key), { PK: "CONFIG", SK: "CURRENT_TRYOUT" });
-    assert.throws(() => mod.response(ctx({ result: null })), (e) => e instanceof EarlyReturn && e.value === null);
+    const none = ctx({ result: null });
+    assert.equal(mod.response(none), null);
+    assert.equal(none.stash.tryoutId, undefined);
     const c = ctx({ result: { tryoutId: TRYOUT } });
     mod.response(c);
     assert.equal(c.stash.tryoutId, TRYOUT);
+  });
+
+  test("getTryout early-returns null when no tryout id is stashed", async () => {
+    const mod = await loadResolver("Fn.getTryout.js");
+    assert.throws(() => mod.request(ctx({ stash: {} })), (e) => e instanceof EarlyReturn && e.value === null);
   });
 
   test("getTryout assembles META + sessions + players (unsorted; clients sort)", async () => {

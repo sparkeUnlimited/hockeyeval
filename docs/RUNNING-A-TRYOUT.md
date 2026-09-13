@@ -1,0 +1,192 @@
+# Running a Tryout with the Evaluator App
+
+This is for the convenor. It covers the week before, the ice times, reading the results, and cleaning up after.
+Companion reading for your evaluators: the *U13 Rep B Player Evaluation Guide* in this folder.
+
+The whole system rests on one rule: **players are numbers, not names.** Nobody using the app ever types, sees
+or exports a name. The registrar keeps the only list that connects a pinnie number to a child, on paper or in
+their own spreadsheet, and shares it with nobody until rankings are final.
+
+---
+
+## A week before
+
+### 1. Get your login
+
+Whoever set up the app gives you an admin login (your email plus a temporary password). Open the app link on a
+laptop or tablet, sign in, and choose a new password when asked. You land on the convenor dashboard.
+
+### 2. Create the tryout
+
+On the **Setup** tab, open *Start a new tryout*, enter a name like `2026-27 U13 Rep B` and the season, and
+click *Create tryout*. Everyone who signs in from now on sees this tryout.
+
+### 3. Add the ice times
+
+Under *Sessions*, add one line per skate: a label (`Skate 1 – Skills`), the date, and the type (skills,
+scrimmage or game). Evaluators pick the session they are scoring from a dropdown, and it defaults to today's.
+
+### 4. Plan pinnies and enter the players
+
+Buy or borrow numbered pinnies in colours whose **first letters are all different**: White, Blue, Red, Green,
+Yellow, Orange work well. Avoid Blue and Black together. Each player is known everywhere as colour letter plus
+number: White 14 is `W-14`, Blue 7 is `B-07`.
+
+Together with the registrar, decide which player wears which pinnie. The registrar writes the number-to-name list
+and keeps it. You never need it, and the app has nowhere to put it.
+
+Then enter the players in the app, with **no names**. Under *Players*, either paste lines like
+
+```
+White,14,D
+White,7,F
+Blue,1,G
+```
+
+(colour, number, F/D/G) or add them one at a time. If a player withdraws or is released between skates, click
+*Release* next to their number; they disappear from the evaluators' screens and from rankings but their scores
+are kept. *Reinstate* brings them back.
+
+If you have a spreadsheet, export just those three columns to a CSV and paste it. The app refuses any line with
+more than three fields, so a roster with names cannot be loaded by accident.
+
+### 5. Create evaluator logins
+
+Under *Evaluator logins*, enter each evaluator's email and a label. The label is what **you** see in the
+rankings (`Evaluator 1`, `Evaluator 2` …). Neutral labels let you look at disagreement without bias; use real
+names only if you want to.
+
+Each evaluator gets an email with a temporary password. Ask them to sign in **before the first skate**, on the
+phone they will use at the rink, and set their own password. That first sign-in also stores the app on their
+phone so it opens even with no signal.
+
+### 6. Brief the evaluators
+
+Fifteen minutes, ideally with the evaluation guide in hand:
+
+- Players are numbers. No roster, no asking who anyone is, nothing identifying in notes.
+- Score independently. Do not compare during a session. Nobody sees anyone else's scores.
+- Watch three to five players at a time, not the whole ice. Assign colours or lines per drill if you can.
+- Use the whole 1–5 scale; 3 is a solid Rep B player. Give a tier (A/B/C/X) at the end.
+- Declare any conflict of interest (own child, relative). They still score; you exclude that pair later.
+
+---
+
+## At the rink
+
+### What evaluators see
+
+The evaluator screen shows the tryout name, a session picker, a sync dot, filter chips (All / each colour /
+F / D / G) and a grid of big buttons, one per active player, showing the colour, number and position. Tapping a
+player slides up a scoring sheet:
+
+- one row per criterion for that position, with five big buttons `1 2 3 4 5` (tap the criterion name, or press and
+  hold a number, to see what it means);
+- tier buttons A / B / C / X;
+- a short notes box (280 characters, "What did you see? (no names)");
+- *Save & Next* jumps to the next unscored player in the current filter, *Save & Close* returns to the grid,
+  *Clear* wipes that player for this session.
+
+Every tap is saved on the phone immediately. Nothing is lost if the phone locks or the Wi-Fi drops. The bottom
+line shows progress: "14 of 38 scored this session". Scored players get a green border, a check mark and their
+tier letter.
+
+Evaluators can only ever see their own scores. They cannot see other evaluators, combined rankings or the
+convenor pages. If they re-score a player in the same session, the new scores replace the old ones.
+
+### The sync dot
+
+- **Green "Synced"**: everything is on the server.
+- **Amber "3 queued"**: saved on the phone, waiting for a connection. Normal at rinks.
+- **Red "Offline"**: no connection at all. Keep scoring; it will catch up.
+- **Red "Sign in again"**: their login expired (after about a month). Scores are safe; sign in again and they sync.
+- **Red "rejected"**: the server refused something, usually because the tryout was closed. Tapping the dot shows why.
+
+Ask evaluators not to sign out while the dot is amber. If they try, the app warns them; the scores stay on the
+phone until they sign in there again, but it is simpler to wait for green.
+
+### Recommended session shape
+
+Skate 1 skills and skating (score skating, puck control, passing, shooting cleanly); skates 2 and 3 small-area
+games and scrimmage (hockey sense, compete, position-specific criteria); the last skate scrimmage only, focused
+on bubble players. Before the last skate, use the rankings to give evaluators the numbers that need a second look.
+
+---
+
+## Reading the results
+
+Sign in on a laptop or tablet. The **Rankings** tab shows one row per active player. Use *Refresh* at the top to
+pull the latest scores.
+
+| Column | Meaning |
+|---|---|
+| Player / Pos | pinnie code and position |
+| Evals | how many evaluator-sessions scored this player |
+| Overall | weighted average of the scored criteria (skating, hockey sense and compete count 1.5×, coachability 0.5×), averaged across evaluations |
+| Spread | how much evaluators disagree on this player: the standard deviation of each evaluator's overall. Rows at 0.75 or more are highlighted |
+| A B C X | how many evaluators gave each tier |
+| Skating … Offensive Play | average score per criterion; `–` means not applicable to that position |
+
+Filter by **Session** (one skate or all combined) and **Position**. Click any column heading to sort. Two toggles:
+
+- **Equal weights** scores every criterion the same instead of using the rubric weights. Handy as a sanity check.
+- **Normalise evaluators** adjusts for a consistently harsh or generous evaluator by re-centring each evaluator's
+  scores on the group average before combining them. It only kicks in for evaluators with at least three scores.
+
+### Highlighted rows
+
+A highlighted spread means the evaluators saw different players or different things. That is information, not a
+fault: those are the players to assign to specific evaluators for a second look, or to discuss with the numbers
+in front of you.
+
+### By evaluator
+
+The **By evaluator** tab shows every evaluator's average and spread next to the group's, with a tendency note
+(harsh, generous, in line, narrow range) and a full list of their scores and notes. Use it to:
+
+- spot an evaluator who scored everyone 3 or 4 (narrow range: their scores separate nobody);
+- check nobody wrote identifying notes; if someone did, ask them to fix it and edit it out of your export;
+- remove a conflict-of-interest pair from your thinking (their score for that one player) before finalising.
+
+---
+
+## Exporting
+
+**Export** tab:
+
+- *Download rankings CSV*: one row per player with whatever session, position and toggles are set on the
+  Rankings tab. The first line records those settings.
+- *Download raw CSV*: every score, tier and note, one row per evaluator × session × player.
+- *Upload … to S3*: also stores a copy in the association's private storage bucket, in case you want a record that
+  does not live on a laptop.
+
+Both files contain player codes only. Match them to names with the registrar's list **after** the ranking is
+agreed, and keep that combined file off shared drives.
+
+---
+
+## After the tryout
+
+1. Export both CSVs and keep them somewhere safe.
+2. **Close tryout** tab → *Close tryout*. Scoring stops for everyone; evaluators can still open the app and see
+   their own scores, read-only. This cannot be undone from the app.
+3. Once the team is announced, go to **Setup** → *Evaluator logins* and click *Delete login* for each
+   evaluator. Their scores stay in the records, identified only by an internal id.
+4. Tell the registrar to file or shred the number-to-name list according to your association's policy.
+
+Next season, create a new tryout on the Setup tab. Old tryouts stay in storage but are no longer shown.
+
+---
+
+## If something goes wrong
+
+- **An evaluator cannot sign in**: check they are using the email you entered. Ask whoever runs the app to reset
+  their password, or delete and recreate their login on the Setup tab (their old scores are kept).
+- **A player has the wrong position or number**: add the correct one, then *Release* the wrong one. Scores under
+  the wrong code stay with the wrong code, so fix this before the first skate if you can.
+- **Two colours start with the same letter**: the app blocks it. Rename one colour (e.g. `Dark` for black).
+- **An evaluator's phone died mid-skate**: their scores up to that moment are on the phone and will sync when it
+  is back on and connected, even days later. They can also switch phones and keep scoring; the two devices'
+  scores combine per player (the most recent save wins).
+- **The dot stays red after the Wi-Fi is back**: tap it. "Sign in again" means the login expired; "rejected" shows
+  the reason (usually a closed tryout).

@@ -6,7 +6,10 @@
   "scripts": {
     "synth": "cdk synth",
     "deploy": "cdk deploy",
-    "diff": "cdk diff"
+    "diff": "cdk diff",
+    "bundle": "node lib/bundle-all.js",
+    "sam:build": "npm run bundle && sam build",
+    "sam:deploy": "sam deploy"
   },
   "dependencies": {
     "aws-cdk-lib": "^2",

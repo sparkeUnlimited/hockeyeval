@@ -1,0 +1,14 @@
+# colour,number,position   (F = forward, D = defence, G = goalie). No names, ever.
+colour,number,position
+White,1,G
+White,4,D
+White,7,F
+White,9,F
+White,12,D
+White,14,F
+Blue,1,G
+Blue,3,D
+Blue,8,F
+Blue,10,F
+Blue,15,D
+Blue,17,F

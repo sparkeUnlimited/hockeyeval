@@ -1,0 +1,40 @@
+# AWS SAM CLI configuration for the backend (alternative to `cdk deploy`).
+#
+#   cd infra
+#   npm install && npm run bundle        # esbuild-bundles the AppSync JS resolvers into .build/resolvers/
+#   sam build                            # packages template.yaml (Lambda code + resolver code + schema)
+#   sam deploy                           # creates/updates the stack below in ca-central-1
+#
+# Or from the repo root: scripts/deploy.sh --sam   (does all of the above, then writes web/js/config.js,
+# uploads web/ and invalidates CloudFront).
+#
+# Use EITHER the SAM stack OR the CDK stack in an account, never both: they create the same fixed
+# DynamoDB table name (TryoutTable) and Cognito pool name, and the second deploy would fail.
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "tryout-evaluator"
+region = "ca-central-1"
+
+[default.build.parameters]
+template_file = "template.yaml"
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+confirm_changeset = false
+resolve_s3 = true
+fail_on_empty_changeset = false
+disable_rollback = false
+tags = "app=\"tryout-evaluator\""
+
+[default.sync.parameters]
+watch = false
+
+[default.delete.parameters]
+no_prompts = false

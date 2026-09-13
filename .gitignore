@@ -11,3 +11,5 @@ playwright-report/
 test-results/
 .env
 infra/.build/
+infra/.aws-sam/
+infra/.deploy-mode

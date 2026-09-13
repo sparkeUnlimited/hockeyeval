@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="robots" content="noindex">
+<title>Evaluate</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b57d0'/%3E%3Ctext x='32' y='42' font-size='30' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3E14%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tryouts">
+</head>
+<body>
+<header class="topbar">
+  <div class="row" style="justify-content:space-between; flex-wrap:nowrap">
+    <div id="tryoutName" class="title grow">Loading…</div>
+    <button id="signOutBtn" class="btn sm ghost" type="button">Sign out</button>
+  </div>
+  <div class="controls">
+    <label class="sr-only" for="sessionSelect">Session</label>
+    <select id="sessionSelect" aria-label="Session"></select>
+    <button id="syncBtn" class="sync green" type="button" aria-live="polite" title="Sync status">
+      <span class="dot"></span><span id="syncText">Synced</span>
+    </button>
+  </div>
+</header>
+
+<div id="banner" class="notice warn" style="margin:.75rem .75rem 0" hidden></div>
+
+<nav id="chips" class="chips" aria-label="Filters"></nav>
+
+<main id="grid" class="grid" aria-label="Players"></main>
+
+<footer class="progress">
+  <div id="progressText">0 of 0 scored this session</div>
+  <div class="bar"><div id="progressBar"></div></div>
+</footer>
+
+<!-- Scoring sheet -->
+<div id="sheetBackdrop" class="sheet-backdrop" hidden></div>
+<section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetWho" hidden>
+  <div class="head">
+    <div id="sheetWho" class="who"><span class="sw" id="sheetSw"></span><span id="sheetNum">W-14</span><span class="muted" id="sheetPos">· D</span></div>
+    <button id="sheetClose" class="btn sm ghost" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="body">
+    <div id="criteria"></div>
+    <div class="side">
+      <h3 style="margin:.5rem 0 .25rem">Tier this session</h3>
+      <div id="tiers" class="tiers"></div>
+      <div class="notes">
+        <label for="notes" class="small" style="font-weight:700">Notes</label>
+        <textarea id="notes" maxlength="280" rows="1" placeholder="What did you see? (no names)"></textarea>
+        <div class="count"><span id="notesCount">0</span>/280 · Never write anything that could identify a player.</div>
+      </div>
+      <div class="actions">
+        <button id="saveNext" class="btn primary full" type="button">Save &amp; Next</button>
+        <button id="saveClose" class="btn" type="button">Save &amp; Close</button>
+        <button id="clearBtn" class="btn danger" type="button">Clear</button>
+      </div>
+      <p class="muted small" style="margin-top:.6rem">Every tap is saved on this phone immediately and synced when there is a connection.</p>
+    </div>
+  </div>
+</section>
+
+<div id="tip" class="tip" hidden></div>
+
+<!-- Sign-out warning -->
+<div id="signOutModal" class="modal-backdrop" hidden>
+  <div class="modal" role="alertdialog" aria-labelledby="soTitle">
+    <h2 id="soTitle">Scores still waiting to sync</h2>
+    <p id="soText"></p>
+    <p class="small muted">Queued scores stay on this device and will sync the next time you sign in here. It is safer to wait for Wi-Fi and a green dot.</p>
+    <div class="actions">
+      <button id="soCancel" class="btn primary" type="button">Wait</button>
+      <button id="soConfirm" class="btn danger" type="button">Sign out anyway</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/amazon-cognito-identity.min.js"></script>
+<script type="module" src="js/evaluate.js"></script>
+</body>
+</html>

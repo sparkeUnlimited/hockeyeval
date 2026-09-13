@@ -1,9 +1,10 @@
 // Pipeline function: Query PK = TRYOUT#<ctx.stash.tryoutId>, return the assembled Tryout.
 // Shared by currentTryout and closeTryout.
-import { util } from "@aws-appsync/utils";
+import { util, runtime } from "@aws-appsync/utils";
 import { tryoutPK, assembleTryout, failOnError } from "./shared.js";
 
 export function request(ctx) {
+  if (!ctx.stash.tryoutId) return runtime.earlyReturn(null);
   return {
     operation: "Query",
     query: {
