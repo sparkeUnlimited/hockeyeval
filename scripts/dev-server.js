@@ -115,7 +115,7 @@ const FIELDS = {
   evaluators: [await R("Query.evaluators.js")],
   upsertEvaluation: [await R("Mutation.upsertEvaluation.1.loadContext.js"), await R("Mutation.upsertEvaluation.2.put.js")],
   createTryout: [await R("Mutation.createTryout.js")],
-  addSession: [await R("Mutation.addSession.js")],
+  addSession: [await R("Mutation.addSession.1.count.js"), await R("Mutation.addSession.2.put.js")],
   upsertPlayers: [await R("Mutation.upsertPlayers.js")],
   setPlayerActive: [await R("Mutation.setPlayerActive.js")],
   setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],

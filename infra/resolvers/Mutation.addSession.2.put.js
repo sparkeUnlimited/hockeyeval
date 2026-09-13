@@ -1,6 +1,7 @@
 import { util } from "@aws-appsync/utils";
 import { tryoutPK, sessionSK, requireAdmin, requireId, requireText, requireDate, requireSessionType, toSession, failOnError } from "./shared.js";
 
+// Step 2 of the addSession pipeline: write the session with the order computed in step 1.
 export function request(ctx) {
   requireAdmin(ctx);
   const tryoutId = requireId(ctx.args.tryoutId, "tryoutId");
@@ -8,7 +9,7 @@ export function request(ctx) {
   const date = requireDate(ctx.args.date);
   const type = requireSessionType(ctx.args.type);
   const sessionId = util.autoId();
-  const order = util.time.nowEpochMilliSeconds();
+  const order = typeof ctx.stash.order === "number" ? ctx.stash.order : 1;
   return {
     operation: "PutItem",
     key: util.dynamodb.toMapValues({ PK: tryoutPK(tryoutId), SK: sessionSK(sessionId) }),

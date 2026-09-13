@@ -215,7 +215,8 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Query.allEvaluations.js", { tryoutId: TRYOUT }],
       ["Query.evaluators.js", {}],
       ["Mutation.createTryout.js", { name: "2026-27 U13 Rep B", season: "2026-27" }],
-      ["Mutation.addSession.js", { tryoutId: TRYOUT, label: "Skate 1", date: "2026-09-20", type: "skills" }],
+      ["Mutation.addSession.1.count.js", { tryoutId: TRYOUT, label: "Skate 1", date: "2026-09-20", type: "skills" }],
+      ["Mutation.addSession.2.put.js", { tryoutId: TRYOUT, label: "Skate 1", date: "2026-09-20", type: "skills" }],
       ["Mutation.upsertPlayers.js", { tryoutId: TRYOUT, players: [{ colour: "White", number: 14, position: "D" }] }],
       ["Mutation.setPlayerActive.js", { tryoutId: TRYOUT, playerNumber: "W-14", active: false }],
       ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],
@@ -368,12 +369,28 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     assert.deepEqual(out, { evaluatorId: EVALUATOR_SUB, enabled: true, updatedAt: "2026-09-13T00:00:00.000Z" });
   });
 
-  test("addSession validates date/type", async () => {
-    const mod = await loadResolver("Mutation.addSession.js");
-    const good = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, label: "Skate 1", date: "2026-09-20", type: "skills" } }));
-    assert.equal(good.operation, "PutItem");
-    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, label: "x", date: "20/09/2026", type: "skills" } })), "BadRequest", /date/);
-    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, label: "x", date: "2026-09-20", type: "practice" } })), "BadRequest", /type/);
+  test("addSession validates date/type up front and gives the new session order = existing count + 1 (a small Int)", async () => {
+    const count = await loadResolver("Mutation.addSession.1.count.js");
+    const put = await loadResolver("Mutation.addSession.2.put.js");
+    const args = { tryoutId: TRYOUT, label: "Skate 1", date: "2026-09-20", type: "skills" };
+    const q = count.request(ctx({ identity: adminIdentity(), args }));
+    assert.equal(q.operation, "Query");
+    assert.equal(q.select, "COUNT");
+    assert.deepEqual(fromMapValues(q.query.expressionValues), { ":pk": `TRYOUT#${TRYOUT}`, ":sk": "SESSION#" });
+    throwsType(() => count.request(ctx({ identity: adminIdentity(), args: { ...args, date: "20/09/2026" } })), "BadRequest", /date/);
+    throwsType(() => count.request(ctx({ identity: adminIdentity(), args: { ...args, type: "practice" } })), "BadRequest", /type/);
+    const c = ctx({ identity: adminIdentity(), args, result: { items: [], scannedCount: 3 } });
+    count.response(c);
+    assert.equal(c.stash.order, 4);
+    const req = put.request(c);
+    assert.equal(req.operation, "PutItem");
+    const attrs = fromMapValues(req.attributeValues);
+    assert.equal(attrs.order, 4);
+    assert.ok(attrs.order <= 2147483647, "order must fit a GraphQL Int");
+    // first session of a tryout
+    const first = ctx({ identity: adminIdentity(), args, result: { items: [], scannedCount: 0 } });
+    count.response(first);
+    assert.equal(fromMapValues(put.request(first).attributeValues).order, 1);
   });
 
   test("setPlayerActive updates only the active flag with an existence condition", async () => {

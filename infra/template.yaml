@@ -253,10 +253,14 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.createTryout.js
-        addSession:
+        countSessions:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
-          CodeUri: ./.build/resolvers/Mutation.addSession.js
+          CodeUri: ./.build/resolvers/Mutation.addSession.1.count.js
+        putSession:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.addSession.2.put.js
         upsertPlayers:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -307,7 +311,7 @@ Resources:
           addSession:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
-            Pipeline: [addSession]
+            Pipeline: [countSessions, putSession]
           upsertPlayers:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
