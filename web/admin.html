@@ -83,14 +83,15 @@
     </div>
 
     <div class="card" id="evaluatorsCard">
-      <h2>Evaluator logins</h2>
-      <p class="small muted">Each evaluator gets an email with a temporary password. Use a label like "Evaluator 3" — the label is what you see in the rankings, so keep it neutral if you prefer blind evaluators.</p>
+      <h2>Evaluators</h2>
+      <p class="small muted">Evaluators sign in with their email and a one-time code; there is no password to send. Use a label like "Evaluator 3" — the label is what you see in the rankings, so keep it neutral if you prefer blind evaluators. A login only works on a tryout it has been <b>added to</b>; use <b>Disable</b> to cut someone off without deleting them or their scores.</p>
       <form id="evaluatorForm" class="row">
         <div class="field grow"><label for="eEmail">Email</label><input id="eEmail" type="email" required></div>
         <div class="field"><label for="eLabel">Label</label><input id="eLabel" type="text" maxlength="40" placeholder="Evaluator 3" required></div>
         <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Create login</button></div>
       </form>
-      <div class="table-wrap"><table><thead><tr><th>Label</th><th>Id</th><th></th></tr></thead><tbody id="evaluatorsBody"></tbody></table></div>
+      <p id="evaluatorHint" class="small muted"></p>
+      <div class="table-wrap"><table><thead><tr><th>Label</th><th>Id</th><th>This tryout</th><th>Access</th><th></th></tr></thead><tbody id="evaluatorsBody"></tbody></table></div>
     </div>
   </section>
 
@@ -146,7 +147,6 @@
   </section>
 </main>
 
-<script src="vendor/amazon-cognito-identity.min.js"></script>
 <script type="module" src="js/admin.js"></script>
 </body>
 </html>

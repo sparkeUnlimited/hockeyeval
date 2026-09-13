@@ -38,6 +38,10 @@ export class TryoutStack extends cdk.Stack {
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       mfa: cognito.Mfa.OFF,
+      // Passwordless: evaluators sign in with an emailed one-time code. Password stays enabled as a fallback
+      // (CLI-created accounts, scripts). Essentials tier is required for email OTP.
+      featurePlan: cognito.FeaturePlan.ESSENTIALS,
+      signInPolicy: { allowedFirstAuthFactors: { password: true, emailOtp: true } },
       removalPolicy: RemovalPolicy.RETAIN,
       userInvitation: {
         emailSubject: "Your tryout evaluator login",
@@ -50,7 +54,8 @@ export class TryoutStack extends cdk.Stack {
     const userPoolClient = userPool.addClient("WebClient", {
       userPoolClientName: "tryout-web",
       generateSecret: false,
-      authFlows: { userSrp: true },
+      // USER_AUTH is the choice-based flow (EMAIL_OTP or PASSWORD). No SRP library needed in the browser.
+      authFlows: { user: true },
       preventUserExistenceErrors: true,
       idTokenValidity: Duration.hours(1),
       accessTokenValidity: Duration.hours(1),
@@ -191,6 +196,7 @@ export class TryoutStack extends cdk.Stack {
     unit("Mutation", "addSession", tableDs, "Mutation.addSession.js");
     unit("Mutation", "upsertPlayers", tableDs, "Mutation.upsertPlayers.js");
     unit("Mutation", "setPlayerActive", tableDs, "Mutation.setPlayerActive.js");
+    unit("Mutation", "setEvaluatorAccess", tableDs, "Mutation.setEvaluatorAccess.js");
     pipeline("Mutation", "closeTryout", [fn("CloseTryout", tableDs, "Mutation.closeTryout.1.close.js"), getTryoutFn]);
     unit("Mutation", "createEvaluator", lambdaDs, "Lambda.adminOps.js");
     unit("Mutation", "deleteEvaluator", lambdaDs, "Lambda.adminOps.js");

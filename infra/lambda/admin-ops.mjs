@@ -57,6 +57,8 @@ async function createEvaluator({ email, displayName }) {
     throw new ClientError("displayName must be 1-40 letters, digits, spaces, . _ -");
   }
   const name = displayName.trim();
+  // Passwordless account: no invitation email with a temporary password. The evaluator signs in with
+  // their email and the one-time code Cognito sends at sign-in time. email_verified must be true for that.
   const created = await cognito.send(new AdminCreateUserCommand({
     UserPoolId: USER_POOL_ID,
     Username: email.toLowerCase(),
@@ -64,7 +66,7 @@ async function createEvaluator({ email, displayName }) {
       { Name: "email", Value: email.toLowerCase() },
       { Name: "email_verified", Value: "true" },
     ],
-    DesiredDeliveryMediums: ["EMAIL"],
+    MessageAction: "SUPPRESS",
   }));
   const username = created.User.Username;
   const sub = created.User.Attributes.find((a) => a.Name === "sub")?.Value || username;

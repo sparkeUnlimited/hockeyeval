@@ -7,8 +7,11 @@
 //   Locally (starts scripts/dev-server.js with mock auth, no AWS needed):
 //     node tests/e2e/dry-run.js
 //
-// Flow: admin creates a tryout with 2 sessions and 12 players; an evaluator scores 6 players in
+// Flow: admin creates a tryout with 2 sessions and 12 players; an evaluator who is not yet on the
+// tryout's list sees a read-only screen; the admin adds them; the evaluator scores 6 players in
 // session 1, goes offline, scores 3 more, comes back online; the admin rankings show all 9.
+// Sign-in uses the password fallback (one-time codes cannot be automated against real Cognito).
+// Deployed mode needs E2E_EVALUATOR_LABEL to match the evaluator's label on the Setup tab (default "Evaluator 1").
 // Screenshots: docs/screenshot-evaluator.png (390x844) and docs/screenshot-admin-rankings.png (1280x800).
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
@@ -22,7 +25,7 @@ const MOCK = !env.E2E_URL;
 const PORT = 8790;
 const URL_BASE = env.E2E_URL || `http://localhost:${PORT}`;
 const ADMIN = { email: env.E2E_ADMIN_EMAIL || "admin@mock.test", password: env.E2E_ADMIN_PASSWORD || "mock-password" };
-const EVAL = { email: env.E2E_EVALUATOR_EMAIL || "evaluator1@mock.test", password: env.E2E_EVALUATOR_PASSWORD || "mock-password" };
+const EVAL = { email: env.E2E_EVALUATOR_EMAIL || "evaluator1@mock.test", password: env.E2E_EVALUATOR_PASSWORD || "mock-password", label: env.E2E_EVALUATOR_LABEL || "Evaluator 1" };
 const HEADLESS = env.E2E_HEADLESS !== "0";
 const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, "");
 const TRYOUT_NAME = `Dry run ${stamp}`;
@@ -43,6 +46,7 @@ const browser = await chromium.launch({ headless: HEADLESS });
 try {
   async function login(page, { email, password }) {
     await page.goto(`${URL_BASE}/index.html`);
+    await page.click("#usePassword");
     await page.fill("#email", email);
     await page.fill("#password", password);
     await page.click("#loginBtn");
@@ -81,12 +85,45 @@ try {
   assert(playerRows === 12, `expected 12 players, saw ${playerRows}`);
   log("12 players added");
 
-  // ------------------------------------------------------------------ Evaluator: score 6 online
+  // ------------------------------------------------------------------ Evaluator not yet on the list: read-only
   const evalCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const ev = await evalCtx.newPage();
-  await login(ev, EVAL);
+  if (MOCK) {
+    // In mock mode the evaluator login is created through the admin UI (which also adds it to the tryout);
+    // sign the evaluator in first so we can see the "not on the list" state before that happens.
+    await login(ev, EVAL);
+  } else {
+    await login(ev, EVAL);
+  }
   assert(ev.url().includes("evaluate.html"), "evaluator should land on evaluate.html");
   await ev.locator("#tryoutName").filter({ hasText: TRYOUT_NAME }).waitFor({ timeout: 20000 });
+  await ev.locator("#banner", { hasText: "not on the evaluator list" }).waitFor({ timeout: 10000 });
+  await ev.locator(".player").first().click();
+  await ev.locator("#sheet").waitFor({ state: "visible" });
+  assert(await ev.locator("#saveNext").isDisabled(), "scoring must be disabled before the evaluator is added to the tryout");
+  await ev.click("#sheetClose");
+  log("evaluator not on the list: read-only, as expected");
+
+  // ------------------------------------------------------------------ Admin: add the evaluator to the tryout
+  await admin.click('.tab[data-tab="setup"]');
+  if (MOCK) {
+    await admin.fill("#eEmail", EVAL.email);
+    await admin.fill("#eLabel", EVAL.label);
+    await admin.click("#evaluatorForm button[type=submit]");
+    await admin.locator("#evaluatorsBody tr", { hasText: EVAL.label }).waitFor({ timeout: 20000 });
+  }
+  const evRow = admin.locator("#evaluatorsBody tr", { hasText: EVAL.label });
+  await evRow.waitFor({ timeout: 20000 });
+  if ((await evRow.locator("button", { hasText: "Add to tryout" }).count()) > 0) {
+    await evRow.locator("button", { hasText: "Add to tryout" }).click();
+  }
+  await admin.locator("#evaluatorsBody tr", { hasText: EVAL.label }).locator(".pill", { hasText: "scoring" }).waitFor({ timeout: 20000 });
+  log("admin added the evaluator to the tryout");
+
+  // ------------------------------------------------------------------ Evaluator: score 6 online
+  await ev.reload();
+  await ev.locator("#tryoutName").filter({ hasText: TRYOUT_NAME }).waitFor({ timeout: 20000 });
+  assert(await ev.locator("#banner").isHidden(), "banner should be gone once the evaluator is on the list");
   const sessionOptions = await ev.locator("#sessionSelect option").allTextContents();
   assert(sessionOptions.length === 2, `expected 2 sessions in picker, saw ${sessionOptions.length}`);
   await ev.selectOption("#sessionSelect", { index: 0 });

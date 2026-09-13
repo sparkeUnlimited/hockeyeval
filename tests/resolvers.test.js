@@ -23,7 +23,7 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
 
   const args = { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", scores: { skating: 4 }, clientId: "c-1" };
 
-  test("request fetches META, SESSION and PLAYER in one BatchGetItem", () => {
+  test("request fetches META, SESSION, PLAYER and the caller's access row in one BatchGetItem", () => {
     const req = mod.request(ctx({ args }));
     assert.equal(req.operation, "BatchGetItem");
     const keys = req.tables.TryoutTable.keys.map(fromMapValues);
@@ -31,7 +31,15 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
       { PK: `TRYOUT#${TRYOUT}`, SK: "META" },
       { PK: `TRYOUT#${TRYOUT}`, SK: `SESSION#${SESSION}` },
       { PK: `TRYOUT#${TRYOUT}`, SK: "PLAYER#W-14" },
+      { PK: `TRYOUT#${TRYOUT}`, SK: `EVALUATOR#${EVALUATOR_SUB}` },
     ]);
+  });
+
+  test("the access row looked up is the caller's, even if args carry another evaluator id", () => {
+    const req = mod.request(ctx({ args: { ...args, evaluatorId: OTHER_SUB }, identity: evaluatorIdentity(EVALUATOR_SUB) }));
+    const keys = req.tables.TryoutTable.keys.map(fromMapValues);
+    assert.equal(keys[3].SK, `EVALUATOR#${EVALUATOR_SUB}`);
+    assert.ok(!JSON.stringify(keys).includes(OTHER_SUB));
   });
 
   test("request rejects unauthenticated callers and malformed ids", () => {
@@ -41,11 +49,12 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
     throwsType(() => mod.request(ctx({ args: { ...args, clientId: "" } })), "BadRequest", /clientId/);
   });
 
-  const rows = (status = "open") => ({
+  const rows = (status = "open", access = { enabled: true }) => ({
     data: { TryoutTable: [
       { PK: `TRYOUT#${TRYOUT}`, SK: "META", status },
       { PK: `TRYOUT#${TRYOUT}`, SK: `SESSION#${SESSION}`, sessionId: SESSION },
       { PK: `TRYOUT#${TRYOUT}`, SK: "PLAYER#W-14", playerNumber: "W-14", position: "D", active: true },
+      ...(access ? [{ PK: `TRYOUT#${TRYOUT}`, SK: `EVALUATOR#${EVALUATOR_SUB}`, evaluatorId: EVALUATOR_SUB, ...access }] : []),
     ] },
   });
 
@@ -57,6 +66,21 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
 
   test("closed tryout is rejected", () => {
     throwsType(() => mod.response(ctx({ args, result: rows("closed") })), "TryoutClosed", /closed/i);
+  });
+
+  test("an evaluator who was never added to the tryout is rejected", () => {
+    throwsType(() => mod.response(ctx({ args, result: rows("open", null) })), "Forbidden", /not an enabled evaluator/);
+  });
+
+  test("a disabled evaluator is rejected; re-enabling works", () => {
+    throwsType(() => mod.response(ctx({ args, result: rows("open", { enabled: false }) })), "Forbidden");
+    const c = ctx({ args, result: rows("open", { enabled: true }) });
+    mod.response(c);
+    assert.equal(c.stash.position, "D");
+  });
+
+  test("closed tryout is reported before the allowlist (so a disabled evaluator on a closed tryout sees 'closed')", () => {
+    throwsType(() => mod.response(ctx({ args, result: rows("closed", null) })), "TryoutClosed");
   });
 
   test("missing tryout, session or player are rejected", () => {
@@ -194,6 +218,7 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.addSession.js", { tryoutId: TRYOUT, label: "Skate 1", date: "2026-09-20", type: "skills" }],
       ["Mutation.upsertPlayers.js", { tryoutId: TRYOUT, players: [{ colour: "White", number: 14, position: "D" }] }],
       ["Mutation.setPlayerActive.js", { tryoutId: TRYOUT, playerNumber: "W-14", active: false }],
+      ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],
       ["Mutation.closeTryout.1.close.js", { tryoutId: TRYOUT }],
       ["Lambda.adminOps.js", { email: "e@example.com", displayName: "Evaluator 1" }],
     ];
@@ -282,17 +307,26 @@ describe("currentTryout pipeline", () => {
     assert.throws(() => mod.request(ctx({ stash: {} })), (e) => e instanceof EarlyReturn && e.value === null);
   });
 
-  test("getTryout assembles META + sessions + players (unsorted; clients sort)", async () => {
+  test("getTryout assembles META + sessions + players + access; canEvaluate is per caller", async () => {
     const mod = await loadResolver("Fn.getTryout.js");
     const req = mod.request(ctx({ stash: { tryoutId: TRYOUT } }));
     assert.deepEqual(fromMapValues(req.query.expressionValues), { ":pk": `TRYOUT#${TRYOUT}` });
-    const out = mod.response(ctx({ stash: { tryoutId: TRYOUT }, result: { items: [
+    const items = [
+      { SK: `EVALUATOR#${EVALUATOR_SUB}`, evaluatorId: EVALUATOR_SUB, enabled: true },
+      { SK: `EVALUATOR#${OTHER_SUB}`, evaluatorId: OTHER_SUB, enabled: false },
       { SK: "PLAYER#W-14", playerNumber: "W-14", colour: "White", number: 14, position: "D", active: true },
       { SK: "SESSION#s2", sessionId: "s2", label: "Skate 2", date: "2026-09-21", type: "scrimmage", order: 2 },
       { SK: "META", name: "2026-27 U13 Rep B", season: "2026-27", status: "open", createdAt: "2026-09-01T00:00:00.000Z" },
       { SK: "PLAYER#B-07", playerNumber: "B-07", colour: "Blue", number: 7, position: "F" },
       { SK: "SESSION#s1", sessionId: "s1", label: "Skate 1", date: "2026-09-20", type: "skills", order: 1 },
-    ] } }));
+    ];
+    const out = mod.response(ctx({ stash: { tryoutId: TRYOUT }, result: { items }, identity: evaluatorIdentity(EVALUATOR_SUB) }));
+    assert.equal(out.canEvaluate, true, "enabled evaluator can evaluate");
+    assert.deepEqual(out.evaluatorAccess.map((a) => [a.evaluatorId, a.enabled]).sort(), [[EVALUATOR_SUB, true], [OTHER_SUB, false]].sort());
+    const disabled = mod.response(ctx({ stash: { tryoutId: TRYOUT }, result: { items }, identity: evaluatorIdentity(OTHER_SUB) }));
+    assert.equal(disabled.canEvaluate, false, "disabled evaluator cannot");
+    const stranger = mod.response(ctx({ stash: { tryoutId: TRYOUT }, result: { items }, identity: evaluatorIdentity("99999999-aaaa-4bbb-8ccc-000000000009") }));
+    assert.equal(stranger.canEvaluate, false, "evaluator never added cannot");
     assert.equal(out.id, TRYOUT);
     assert.equal(out.status, "open");
     assert.deepEqual(out.sessions.map((s) => s.id).sort(), ["s1", "s2"]);
@@ -317,6 +351,21 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     const out = mod.response(c);
     assert.deepEqual(out.sessions, []);
     assert.equal(out.name, "2026-27 U13 Rep B");
+    assert.equal(out.canEvaluate, false, "a new tryout starts with nobody allowed to score");
+    assert.deepEqual(out.evaluatorAccess, []);
+  });
+
+  test("setEvaluatorAccess upserts TRYOUT#/EVALUATOR# with the enabled flag", async () => {
+    const mod = await loadResolver("Mutation.setEvaluatorAccess.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: false } }));
+    assert.equal(req.operation, "PutItem");
+    assert.deepEqual(fromMapValues(req.key), { PK: `TRYOUT#${TRYOUT}`, SK: `EVALUATOR#${EVALUATOR_SUB}` });
+    const attrs = fromMapValues(req.attributeValues);
+    assert.equal(attrs.enabled, false);
+    assert.equal(attrs.evaluatorId, EVALUATOR_SUB);
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, evaluatorId: "bad id!", enabled: true } })), "BadRequest", /evaluatorId/);
+    const out = mod.response(ctx({ result: { evaluatorId: EVALUATOR_SUB, enabled: true, updatedAt: "2026-09-13T00:00:00.000Z", PK: "x", SK: "y" } }));
+    assert.deepEqual(out, { evaluatorId: EVALUATOR_SUB, enabled: true, updatedAt: "2026-09-13T00:00:00.000Z" });
   });
 
   test("addSession validates date/type", async () => {

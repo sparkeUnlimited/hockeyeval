@@ -118,12 +118,13 @@ const FIELDS = {
   addSession: [await R("Mutation.addSession.js")],
   upsertPlayers: [await R("Mutation.upsertPlayers.js")],
   setPlayerActive: [await R("Mutation.setPlayerActive.js")],
+  setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],
   closeTryout: [await R("Mutation.closeTryout.1.close.js"), await R("Fn.getTryout.js")],
   createEvaluator: [await R("Lambda.adminOps.js")],
   deleteEvaluator: [await R("Lambda.adminOps.js")],
   exportUrl: [await R("Lambda.adminOps.js")],
 };
-const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "setPlayerActive", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
+const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "setPlayerActive", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
 
 async function runField(field, args, identity) {
   const ctx = { args, arguments: args, identity, stash: {}, prev: { result: null }, result: null, error: null, info: { fieldName: field, parentTypeName: "" } };
@@ -181,8 +182,9 @@ function seed() {
   for (const [email, label] of [["evaluator1@mock.test", "Evaluator 1"], ["evaluator2@mock.test", "Evaluator 2"]]) {
     const sub = subFor(email);
     db.set(k(`USER#${sub}`, "META"), { PK: `USER#${sub}`, SK: "META", GSI1PK: "USERS", GSI1SK: `USER#${sub}`, userId: sub, displayName: label, role: "evaluator" });
+    db.set(k(`TRYOUT#${id}`, `EVALUATOR#${sub}`), { PK: `TRYOUT#${id}`, SK: `EVALUATOR#${sub}`, tryoutId: id, evaluatorId: sub, enabled: true, updatedAt: new Date().toISOString() });
   }
-  console.log("seeded: 1 tryout, 2 sessions, 15 players, 2 evaluators");
+  console.log("seeded: 1 tryout, 2 sessions, 15 players, 2 evaluators (both allowed on the tryout)");
 }
 if (SEED) seed();
 

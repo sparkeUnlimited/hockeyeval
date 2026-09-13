@@ -7,7 +7,8 @@ export function request(ctx) {
   const season = requireText(ctx.args.season, "season", 20);
   const id = util.autoId();
   const createdAt = util.time.nowISO8601();
-  ctx.stash.tryout = { id, name, season, status: "open", createdAt, sessions: [], players: [] };
+  // Nobody is allowed to score a new tryout until the admin adds them (setEvaluatorAccess).
+  ctx.stash.tryout = { id, name, season, status: "open", createdAt, sessions: [], players: [], canEvaluate: false, evaluatorAccess: [] };
   return {
     operation: "TransactWriteItems",
     transactItems: [

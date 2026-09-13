@@ -16,6 +16,16 @@ type Tryout {
   createdAt: AWSDateTime
   sessions: [Session!]!
   players: [Player!]!
+  # True when the caller is on this tryout's evaluator list and enabled.
+  canEvaluate: Boolean!
+  # Admin only: who may score this tryout. Ids only.
+  evaluatorAccess: [EvaluatorAccess!]! @aws_auth(cognito_groups: ["admin"])
+}
+
+type EvaluatorAccess {
+  evaluatorId: ID!
+  enabled: Boolean!
+  updatedAt: AWSDateTime
 }
 
 type Session {
@@ -79,7 +89,8 @@ type Query {
 }
 
 type Mutation {
-  # Upsert. evaluatorId comes from the caller's identity. Rejected when the tryout is closed.
+  # Upsert. evaluatorId comes from the caller's identity. Rejected when the tryout is closed or the
+  # caller is not an enabled evaluator on the tryout.
   upsertEvaluation(
     tryoutId: ID!
     sessionId: ID!
@@ -102,6 +113,9 @@ type Mutation {
   # Lambda-backed. Removes the Cognito user and their profile. Their scores are kept (by id only).
   deleteEvaluator(id: ID!): ID! @aws_auth(cognito_groups: ["admin"])
   closeTryout(tryoutId: ID!): Tryout! @aws_auth(cognito_groups: ["admin"])
+  # Add an evaluator to a tryout, or switch their access on/off. Disabled evaluators' writes are rejected.
+  setEvaluatorAccess(tryoutId: ID!, evaluatorId: ID!, enabled: Boolean!): EvaluatorAccess!
+    @aws_auth(cognito_groups: ["admin"])
   # Lambda-backed. Presigned S3 PUT URL for a CSV export (valid 5 minutes).
   exportUrl(tryoutId: ID!, filename: String!): AWSURL! @aws_auth(cognito_groups: ["admin"])
 }

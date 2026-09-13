@@ -13,8 +13,10 @@ their own spreadsheet, and shares it with nobody until rankings are final.
 
 ### 1. Get your login
 
-Whoever set up the app gives you an admin login (your email plus a temporary password). Open the app link on a
-laptop or tablet, sign in, and choose a new password when asked. You land on the convenor dashboard.
+Whoever set up the app registers your email as the convenor. Open the app link on a laptop or tablet, type your
+email and tap *Email me a code*. A six-digit code arrives by email within a minute; type it in and you are on the
+convenor dashboard. There is no password to remember. (If you were given a password instead, tap *Use a
+password instead*.)
 
 ### 2. Create the tryout
 
@@ -50,15 +52,20 @@ are kept. *Reinstate* brings them back.
 If you have a spreadsheet, export just those three columns to a CSV and paste it. The app refuses any line with
 more than three fields, so a roster with names cannot be loaded by accident.
 
-### 5. Create evaluator logins
+### 5. Create evaluator logins and add them to the tryout
 
-Under *Evaluator logins*, enter each evaluator's email and a label. The label is what **you** see in the
+Under *Evaluators*, enter each evaluator's email and a label. The label is what **you** see in the
 rankings (`Evaluator 1`, `Evaluator 2` …). Neutral labels let you look at disagreement without bias; use real
 names only if you want to.
 
-Each evaluator gets an email with a temporary password. Ask them to sign in **before the first skate**, on the
-phone they will use at the rink, and set their own password. That first sign-in also stores the app on their
-phone so it opens even with no signal.
+No email goes out when you create a login. Send the evaluators the app link yourself: they type their email,
+get a code by email, type it in, and they are signed in for a month. Ask them to do this **before the first
+skate**, on the phone they will use at the rink. That first sign-in also stores the app on the phone so it opens
+even with no signal.
+
+A login only works for tryouts it has been added to. Logins you create here are added to the current tryout
+automatically and show as **scoring**. Evaluators from a previous season show as **not added** until you click
+*Add to tryout*. The line above the table tells you how many people can currently score.
 
 ### 6. Brief the evaluators
 
@@ -94,13 +101,20 @@ tier letter.
 Evaluators can only ever see their own scores. They cannot see other evaluators, combined rankings or the
 convenor pages. If they re-score a player in the same session, the new scores replace the old ones.
 
+### Stopping an evaluator
+
+If an evaluator drops out, or you want to be sure nobody adds scores after the last skate, click **Disable**
+next to their label on the Setup tab. From that moment the server refuses their scores, including anything
+still queued on their phone, and their screen goes read-only with a note to ask the convenor. Their existing
+scores are kept and still count. *Enable* reverses it. You do not need to delete anything.
+
 ### The sync dot
 
 - **Green "Synced"**: everything is on the server.
 - **Amber "3 queued"**: saved on the phone, waiting for a connection. Normal at rinks.
 - **Red "Offline"**: no connection at all. Keep scoring; it will catch up.
 - **Red "Sign in again"**: their login expired (after about a month). Scores are safe; sign in again and they sync.
-- **Red "rejected"**: the server refused something, usually because the tryout was closed. Tapping the dot shows why.
+- **Red "rejected"**: the server refused something, usually because the tryout was closed or the evaluator was disabled. Tapping the dot shows why.
 
 Ask evaluators not to sign out while the dot is amber. If they try, the app warns them; the scores stay on the
 phone until they sign in there again, but it is simpler to wait for green.
@@ -170,18 +184,22 @@ agreed, and keep that combined file off shared drives.
 1. Export both CSVs and keep them somewhere safe.
 2. **Close tryout** tab → *Close tryout*. Scoring stops for everyone; evaluators can still open the app and see
    their own scores, read-only. This cannot be undone from the app.
-3. Once the team is announced, go to **Setup** → *Evaluator logins* and click *Delete login* for each
-   evaluator. Their scores stay in the records, identified only by an internal id.
+3. Once the team is announced, go to **Setup** → *Evaluators* and click *Disable* (keeps the login for next
+   season) or *Delete login* for each evaluator. Their scores stay in the records, identified only by an internal id.
 4. Tell the registrar to file or shred the number-to-name list according to your association's policy.
 
-Next season, create a new tryout on the Setup tab. Old tryouts stay in storage but are no longer shown.
+Next season, create a new tryout on the Setup tab. Nobody can score it until you add evaluators to it, so old
+logins cannot create stray evaluations. Old tryouts stay in storage but are no longer shown.
 
 ---
 
 ## If something goes wrong
 
-- **An evaluator cannot sign in**: check they are using the email you entered. Ask whoever runs the app to reset
-  their password, or delete and recreate their login on the Setup tab (their old scores are kept).
+- **An evaluator cannot sign in**: check they are using exactly the email you entered, and that the code email
+  did not land in spam. Codes expire after a few minutes; *Send a new code* gets a fresh one. If nothing arrives,
+  delete and recreate their login on the Setup tab (their old scores are kept).
+- **An evaluator sees "not on the evaluator list"**: on the Setup tab, click *Add to tryout* or *Enable* next to
+  their label, then have them reload.
 - **A player has the wrong position or number**: add the correct one, then *Release* the wrong one. Scores under
   the wrong code stay with the wrong code, so fix this before the first skate if you can.
 - **Two colours start with the same letter**: the app blocks it. Rename one colour (e.g. `Dark` for black).

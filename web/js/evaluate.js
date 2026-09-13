@@ -48,6 +48,9 @@ function clientIdFor(playerNumber) {
 }
 
 const isClosed = () => state.tryout?.status !== "open";
+const canEvaluate = () => state.tryout?.canEvaluate === true;
+/** Scoring is blocked when the tryout is closed or the caller is not an enabled evaluator on it. */
+const isReadOnly = () => isClosed() || !canEvaluate();
 const activePlayers = () => (state.tryout?.players || []).filter((p) => p.active);
 const hasContent = (e) => !!e && (Object.keys(e.scores || {}).length > 0 || !!e.tier || !!(e.notes && e.notes.trim()));
 
@@ -135,6 +138,9 @@ function renderBanner() {
   } else if (isClosed()) {
     b.hidden = false; b.className = "notice";
     b.textContent = "This tryout is closed. Your scores are read-only.";
+  } else if (!canEvaluate()) {
+    b.hidden = false; b.className = "notice warn";
+    b.textContent = "You are not on the evaluator list for this tryout. Ask the convenor to add you, then pull down to refresh.";
   } else if (!state.tryout.sessions.length) {
     b.hidden = false; b.className = "notice warn";
     b.textContent = "No sessions have been added to this tryout yet.";
@@ -206,7 +212,7 @@ function openSheet(playerNumber) {
   $("sheetSw").style.background = swatchColour(p.colour);
   $("sheetNum").textContent = playerNumber;
   $("sheetPos").textContent = `· ${p.position}`;
-  $("sheet").classList.toggle("readonly", isClosed());
+  $("sheet").classList.toggle("readonly", isReadOnly());
 
   const crit = $("criteria");
   crit.innerHTML = "";
@@ -239,9 +245,9 @@ function openSheet(playerNumber) {
 
   const notes = $("notes");
   notes.value = e.notes || "";
-  notes.disabled = isClosed();
+  notes.disabled = isReadOnly();
   $("notesCount").textContent = String(notes.value.length);
-  for (const id of ["saveNext", "saveClose", "clearBtn"]) $(id).disabled = isClosed();
+  for (const id of ["saveNext", "saveClose", "clearBtn"]) $(id).disabled = isReadOnly();
 
   $("sheetBackdrop").hidden = false;
   $("sheet").hidden = false;
@@ -259,7 +265,7 @@ function closeSheet() {
 }
 
 function setScore(key, value) {
-  if (isClosed() || !state.current) return;
+  if (isReadOnly() || !state.current) return;
   const e = state.evals[state.current] || { scores: {} };
   const scores = { ...(e.scores || {}) };
   if (scores[key] === value) delete scores[key]; else scores[key] = value; // tap again to clear
@@ -272,7 +278,7 @@ function setScore(key, value) {
 function labelOf(key) { return criteriaFor("F").concat(criteriaFor("D"), criteriaFor("G")).find((c) => c.key === key)?.label || key; }
 
 function setTier(t) {
-  if (isClosed() || !state.current) return;
+  if (isReadOnly() || !state.current) return;
   const e = state.evals[state.current] || {};
   const tier = e.tier === t ? null : t;
   saveLocal(state.current, { tier });
@@ -281,7 +287,7 @@ function setTier(t) {
 
 function flushNotes() {
   clearTimeout(notesTimer);
-  if (!state.current || isClosed()) return;
+  if (!state.current || isReadOnly()) return;
   const v = $("notes").value.slice(0, NOTES_MAX);
   const e = state.evals[state.current];
   if ((e?.notes || "") !== v) saveLocal(state.current, { notes: v });
@@ -306,7 +312,7 @@ $("saveClose").addEventListener("click", closeSheet);
 $("sheetClose").addEventListener("click", closeSheet);
 $("sheetBackdrop").addEventListener("click", closeSheet);
 $("clearBtn").addEventListener("click", () => {
-  if (!state.current || isClosed()) return;
+  if (!state.current || isReadOnly()) return;
   if (!confirm(`Clear all scores, tier and notes for ${state.current} in this session?`)) return;
   saveLocal(state.current, { scores: {}, tier: null, notes: "" });
   openSheet(state.current);

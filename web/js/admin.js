@@ -1,7 +1,7 @@
 // Convenor dashboard: setup, rankings, per-evaluator view, CSV export, close.
 // Everything here is by player number only. There is no name field anywhere and no place to type one.
 import { requireAuth, signOut } from "./auth.js";
-import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT, normalizeTryout, swatchColour, AuthError } from "./api.js";
+import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, AuthError } from "./api.js";
 import { CRITERIA, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
 registerServiceWorker();
@@ -49,7 +49,7 @@ async function run(fn, okText) {
 
 // ----------------------------------------------------------------------------- Data
 async function loadAll() {
-  const data = await gql(Q_CURRENT_TRYOUT);
+  const data = await gql(Q_CURRENT_TRYOUT_ADMIN);
   state.tryout = normalizeTryout(data.currentTryout);
   if (state.tryout) {
     const [evals, evaluators] = await Promise.all([
@@ -183,11 +183,24 @@ function renderSetup() {
   if (!players.length) pb.append(el("tr", {}, el("td", { colspan: 6, class: "muted" }, "No players yet.")));
 
   const eb = $("evaluatorsBody"); eb.innerHTML = "";
-  for (const e of state.evaluators) {
-    eb.append(el("tr", {}, el("td", {}, e.displayName), el("td", { class: "muted small" }, e.id),
-      el("td", {}, el("button", { class: "btn sm danger", type: "button", onclick: () => deleteEvaluator(e) }, "Delete login"))));
+  const access = new Map((t.evaluatorAccess || []).map((a) => [a.evaluatorId, a]));
+  // Logins first, then any access rows whose login has since been deleted.
+  const rows = [...state.evaluators.map((e) => ({ ...e, access: access.get(e.id) || null }))];
+  for (const [id, a] of access) if (!state.evaluators.some((e) => e.id === id)) rows.push({ id, displayName: "(deleted login)", access: a, orphan: true });
+  const enabledCount = rows.filter((r) => r.access?.enabled).length;
+  $("evaluatorHint").textContent = `${enabledCount} evaluator${enabledCount === 1 ? "" : "s"} can score this tryout. New logins are added automatically; a new tryout starts with nobody added.`;
+  for (const r of rows) {
+    const a = r.access;
+    const statusCell = !a ? el("span", { class: "pill" }, "not added") : a.enabled ? el("span", { class: "pill ok" }, "scoring") : el("span", { class: "pill bad" }, "disabled");
+    const toggle = !a
+      ? el("button", { class: "btn sm primary", type: "button", onclick: () => setAccess(r.id, true) }, "Add to tryout")
+      : a.enabled
+        ? el("button", { class: "btn sm", type: "button", onclick: () => setAccess(r.id, false) }, "Disable")
+        : el("button", { class: "btn sm", type: "button", onclick: () => setAccess(r.id, true) }, "Enable");
+    eb.append(el("tr", { "data-evaluator": r.id }, el("td", {}, r.displayName), el("td", { class: "muted small" }, r.id), el("td", {}, statusCell), el("td", {}, toggle),
+      el("td", {}, r.orphan ? "" : el("button", { class: "btn sm danger", type: "button", onclick: () => deleteEvaluator(r) }, "Delete login"))));
   }
-  if (!state.evaluators.length) eb.append(el("tr", {}, el("td", { colspan: 3, class: "muted" }, "No evaluator logins yet.")));
+  if (!rows.length) eb.append(el("tr", {}, el("td", { colspan: 5, class: "muted" }, "No evaluator logins yet.")));
 
   // session selects
   for (const id of ["rSession", "vSession"]) {
@@ -281,18 +294,29 @@ async function setActive(p, active) {
   }, `${p.playerNumber} ${active ? "reinstated" : "released"}.`);
 }
 
+async function setAccess(evaluatorId, enabled) {
+  await run(async () => {
+    await gql(`mutation($tryoutId: ID!, $evaluatorId: ID!, $enabled: Boolean!) { setEvaluatorAccess(tryoutId: $tryoutId, evaluatorId: $evaluatorId, enabled: $enabled) { evaluatorId enabled } }`,
+      { tryoutId: state.tryout.id, evaluatorId, enabled });
+    await loadAll();
+  }, enabled ? "Evaluator can now score this tryout." : "Evaluator disabled. Any further scores from them will be rejected.");
+}
+
 $("evaluatorForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   await run(async () => {
-    await gql(`mutation($email: AWSEmail!, $displayName: String!) { createEvaluator(email: $email, displayName: $displayName) { id } }`,
+    const data = await gql(`mutation($email: AWSEmail!, $displayName: String!) { createEvaluator(email: $email, displayName: $displayName) { id } }`,
       { email: $("eEmail").value.trim(), displayName: $("eLabel").value.trim() });
+    // New logins are added to the current tryout straight away.
+    await gql(`mutation($tryoutId: ID!, $evaluatorId: ID!, $enabled: Boolean!) { setEvaluatorAccess(tryoutId: $tryoutId, evaluatorId: $evaluatorId, enabled: $enabled) { evaluatorId } }`,
+      { tryoutId: state.tryout.id, evaluatorId: data.createEvaluator.id, enabled: true });
     $("eEmail").value = ""; $("eLabel").value = "";
     await loadAll();
-  }, "Evaluator created. They will receive an email with a temporary password.");
+  }, "Login created and added to this tryout. Send them the app link: they sign in with their email and a one-time code.");
 });
 
 async function deleteEvaluator(e) {
-  if (!confirm(`Delete the login for "${e.displayName}"? Their scores are kept.`)) return;
+  if (!confirm(`Delete the login for "${e.displayName}"? Their scores are kept. To just stop them scoring, use Disable instead.`)) return;
   await run(async () => { await gql(`mutation($id: ID!) { deleteEvaluator(id: $id) }`, { id: e.id }); await loadAll(); }, "Evaluator login deleted.");
 }
 

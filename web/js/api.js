@@ -235,9 +235,17 @@ export function registerServiceWorker() {
 
 // ----------------------------------------------------------------------------- Queries used by both screens
 export const Q_CURRENT_TRYOUT = `query { currentTryout {
-  id name season status createdAt
+  id name season status createdAt canEvaluate
   sessions { id label date type order }
   players { playerNumber colour number position active }
+} }`;
+
+/** Admin variant: also lists who may score this tryout (admin-only field). */
+export const Q_CURRENT_TRYOUT_ADMIN = `query { currentTryout {
+  id name season status createdAt canEvaluate
+  sessions { id label date type order }
+  players { playerNumber colour number position active }
+  evaluatorAccess { evaluatorId enabled updatedAt }
 } }`;
 
 export const Q_MY_EVALS = `query My($tryoutId: ID!, $sessionId: ID!) {

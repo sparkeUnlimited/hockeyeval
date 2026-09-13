@@ -1,8 +1,8 @@
 // Network-first service worker: keeps the app shell available when rink Wi-Fi drops.
 // Only same-origin GET requests are cached. The API (different origin) is never cached.
-const CACHE = "tryout-shell-v1";
+const CACHE = "tryout-shell-v2";
 const SHELL = ["/", "/index.html", "/evaluate.html", "/admin.html", "/css/app.css", "/js/config.js", "/js/auth.js",
-  "/js/api.js", "/js/criteria.js", "/js/evaluate.js", "/js/admin.js", "/vendor/amazon-cognito-identity.min.js"];
+  "/js/api.js", "/js/criteria.js", "/js/evaluate.js", "/js/admin.js"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting()));

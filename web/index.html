@@ -19,7 +19,35 @@
 
   <div id="status" class="notice" hidden></div>
 
-  <form id="loginForm" class="card" autocomplete="on">
+  <!-- Step 1: email -> send code -->
+  <form id="codeForm" class="card" autocomplete="on">
+    <h2>Sign in</h2>
+    <p class="muted small">Enter the email the convenor registered. We'll email you a one-time code. No password needed.</p>
+    <div class="field">
+      <label for="codeEmail">Email</label>
+      <input id="codeEmail" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" required>
+    </div>
+    <p id="codeError" class="error" role="alert" hidden></p>
+    <button id="codeBtn" class="btn primary block" type="submit">Email me a code</button>
+    <p class="small" style="text-align:center;margin:.9rem 0 0"><a href="#" id="usePassword">Use a password instead</a></p>
+  </form>
+
+  <!-- Step 2: enter code -->
+  <form id="verifyForm" class="card" hidden>
+    <h2>Check your email</h2>
+    <p class="muted small">We sent a code to <b id="destination"></b>. It expires in a few minutes.</p>
+    <div class="field">
+      <label for="code">Code</label>
+      <input id="code" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="8" required style="font-size:1.6rem;letter-spacing:.3em;text-align:center">
+    </div>
+    <p id="verifyError" class="error" role="alert" hidden></p>
+    <button id="verifyBtn" class="btn primary block" type="submit">Sign in</button>
+    <p class="small" style="text-align:center;margin:.9rem 0 0"><a href="#" id="resend">Send a new code</a> · <a href="#" id="changeEmail">Different email</a></p>
+  </form>
+
+  <!-- Fallback: password -->
+  <form id="loginForm" class="card" autocomplete="on" hidden>
+    <h2>Sign in with a password</h2>
     <div class="field">
       <label for="email">Email</label>
       <input id="email" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" required>
@@ -30,6 +58,7 @@
     </div>
     <p id="loginError" class="error" role="alert" hidden></p>
     <button id="loginBtn" class="btn primary block" type="submit">Sign in</button>
+    <p class="small" style="text-align:center;margin:.9rem 0 0"><a href="#" id="useCode">Use an emailed code instead</a></p>
   </form>
 
   <form id="newPasswordForm" class="card" hidden>
@@ -47,49 +76,89 @@
     <button id="newPasswordBtn" class="btn primary block" type="submit">Set password and sign in</button>
   </form>
 
-  <p class="muted small" style="text-align:center">Forgot your password? Ask the convenor to reset it.</p>
+  <p class="muted small" style="text-align:center">Trouble signing in? Ask the convenor to check your email address is registered.</p>
 </main>
 
-<script src="vendor/amazon-cognito-identity.min.js"></script>
 <script type="module">
-  import { signIn, whoAmI, homeFor, config } from "./js/auth.js";
+  import { startEmailCode, completeEmailCode, signInWithPassword, whoAmI, homeFor, friendlyAuthError, config } from "./js/auth.js";
   import { registerServiceWorker } from "./js/api.js";
   registerServiceWorker();
 
   const $ = (id) => document.getElementById(id);
   const status = $("status");
+  const show = (id) => { for (const f of ["codeForm", "verifyForm", "loginForm", "newPasswordForm"]) $(f).hidden = f !== id; };
+  const fail = (id, ex) => { const e = $(id); e.textContent = friendlyAuthError(ex); e.hidden = false; };
+  const busy = (id, on, label) => { const b = $(id); b.disabled = on; if (label) b.textContent = label; };
 
   if (!config.userPoolId || config.userPoolId.includes("XXXX")) {
     status.hidden = false; status.className = "notice bad";
     status.textContent = "This copy of the app has no configuration. Run scripts/deploy.sh to generate js/config.js.";
+  } else if (config.mock === true) {
+    status.hidden = false; status.className = "notice";
+    status.textContent = "Local mock: any email works (admin* = convenor), the code is always 123456, password \"temp\" triggers the new-password step.";
   }
 
   // Already signed in? Go straight to the right screen.
   try {
     const me = await whoAmI();
     if (me) location.replace(homeFor(me.groups));
-  } catch { /* fall through to the form */ }
+  } catch { /* fall through */ }
 
+  let email = "", session = "";
+
+  // ---- code flow
+  $("codeForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("codeError").hidden = true;
+    email = $("codeEmail").value.trim();
+    busy("codeBtn", true, "Sending…");
+    try {
+      const r = await startEmailCode(email);
+      session = r.session;
+      $("destination").textContent = r.destination || email;
+      $("code").value = "";
+      show("verifyForm");
+      $("code").focus();
+    } catch (ex) { fail("codeError", ex); }
+    finally { busy("codeBtn", false, "Email me a code"); }
+  });
+
+  $("verifyForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("verifyError").hidden = true;
+    busy("verifyBtn", true, "Checking…");
+    try {
+      const groups = await completeEmailCode(email, $("code").value, session);
+      location.replace(homeFor(groups));
+    } catch (ex) {
+      fail("verifyError", ex);
+      if (ex.code === "ExpiredCodeException" || ex.code === "NotAuthorizedException") { show("codeForm"); fail("codeError", ex); }
+      busy("verifyBtn", false, "Sign in");
+    }
+  });
+
+  $("resend").addEventListener("click", async (e) => {
+    e.preventDefault();
+    $("verifyError").hidden = true;
+    try { const r = await startEmailCode(email); session = r.session; $("destination").textContent = r.destination || email; $("code").value = ""; $("code").focus(); }
+    catch (ex) { fail("verifyError", ex); }
+  });
+  $("changeEmail").addEventListener("click", (e) => { e.preventDefault(); show("codeForm"); $("codeEmail").focus(); });
+  $("usePassword").addEventListener("click", (e) => { e.preventDefault(); $("email").value = $("codeEmail").value; show("loginForm"); $("email").focus(); });
+  $("useCode").addEventListener("click", (e) => { e.preventDefault(); $("codeEmail").value = $("email").value; show("codeForm"); $("codeEmail").focus(); });
+
+  // ---- password fallback
   let pending = null;
   $("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const err = $("loginError"); err.hidden = true;
-    const btn = $("loginBtn"); btn.disabled = true; btn.textContent = "Signing in…";
+    $("loginError").hidden = true;
+    busy("loginBtn", true, "Signing in…");
     try {
-      const result = await signIn($("email").value.trim(), $("password").value);
-      if (result.kind === "newPassword") {
-        pending = result;
-        $("loginForm").hidden = true;
-        $("newPasswordForm").hidden = false;
-        $("newPassword").focus();
-      } else {
-        location.replace(homeFor(result.groups));
-      }
-    } catch (ex) {
-      err.textContent = friendly(ex); err.hidden = false;
-    } finally {
-      btn.disabled = false; btn.textContent = "Sign in";
-    }
+      const result = await signInWithPassword($("email").value.trim(), $("password").value);
+      if (result.kind === "newPassword") { pending = result; show("newPasswordForm"); $("newPassword").focus(); }
+      else location.replace(homeFor(result.groups));
+    } catch (ex) { fail("loginError", ex); }
+    finally { busy("loginBtn", false, "Sign in"); }
   });
 
   $("newPasswordForm").addEventListener("submit", async (e) => {
@@ -97,24 +166,10 @@
     const err = $("newPasswordError"); err.hidden = true;
     const a = $("newPassword").value, b = $("newPassword2").value;
     if (a !== b) { err.textContent = "The two passwords don't match."; err.hidden = false; return; }
-    const btn = $("newPasswordBtn"); btn.disabled = true;
-    try {
-      const groups = await pending.complete(a);
-      location.replace(homeFor(groups));
-    } catch (ex) {
-      err.textContent = friendly(ex); err.hidden = false; btn.disabled = false;
-    }
+    busy("newPasswordBtn", true);
+    try { location.replace(homeFor(await pending.complete(a))); }
+    catch (ex) { fail("newPasswordError", ex); busy("newPasswordBtn", false); }
   });
-
-  function friendly(ex) {
-    const code = ex?.code || ex?.name || "";
-    if (code === "NotAuthorizedException" || code === "UserNotFoundException") return "Email or password is incorrect.";
-    if (code === "PasswordResetRequiredException") return "Your password was reset. Ask the convenor for a new temporary password.";
-    if (code === "InvalidPasswordException") return "Password needs at least 8 characters including a number.";
-    if (code === "NetworkError" || /network|fetch/i.test(ex?.message || "")) return "No connection. Check Wi-Fi and try again.";
-    if (code === "LimitExceededException") return "Too many attempts. Wait a minute and try again.";
-    return ex?.message || "Sign-in failed.";
-  }
 </script>
 </body>
 </html>

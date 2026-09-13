@@ -13,7 +13,6 @@
   },
   "devDependencies": {
     "@aws-appsync/utils": "^1.10.0",
-    "amazon-cognito-identity-js": "^6.3.20",
     "playwright": "^1.63.0"
   }
 }

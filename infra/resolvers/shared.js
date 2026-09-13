@@ -12,6 +12,7 @@ export const USERS_GSI1PK = "USERS";
 export const tryoutPK = (tryoutId) => `TRYOUT#${tryoutId}`;
 export const sessionSK = (sessionId) => `SESSION#${sessionId}`;
 export const playerSK = (playerNumber) => `PLAYER#${playerNumber}`;
+export const evaluatorSK = (sub) => `EVALUATOR#${sub}`;
 export const evalPK = (tryoutId, sessionId, sub) => `EVAL#${tryoutId}#${sessionId}#${sub}`;
 export const evalGSI1PK = (tryoutId, playerNumber) => `TRYOUT#${tryoutId}#PLAYER#${playerNumber}`;
 export const evalGSI1SK = (sessionId, sub) => `SESSION#${sessionId}#EVAL#${sub}`;
@@ -149,15 +150,28 @@ export function toSession(item) {
   return { id: item.sessionId, label: item.label, date: item.date, type: item.type, order: item.order };
 }
 
-/** Build a Tryout from the items of Query PK = TRYOUT#<id> (META + SESSION# + PLAYER#). */
-export function assembleTryout(tryoutId, items) {
+export function toEvaluatorAccess(item) {
+  return { evaluatorId: item.evaluatorId, enabled: item.enabled !== false, updatedAt: item.updatedAt || null };
+}
+
+/**
+ * Build a Tryout from the items of Query PK = TRYOUT#<id> (META + SESSION# + PLAYER# + EVALUATOR#).
+ * canEvaluate is computed for the caller (sub); evaluatorAccess is only returned to admins by the schema.
+ */
+export function assembleTryout(tryoutId, items, sub) {
   let meta = null;
   const sessions = [];
   const players = [];
+  const evaluatorAccess = [];
+  let canEvaluate = false;
   for (const it of items) {
     if (it.SK === "META") meta = it;
     else if (it.SK.startsWith("SESSION#")) sessions.push(toSession(it));
     else if (it.SK.startsWith("PLAYER#")) players.push(toPlayer(it));
+    else if (it.SK.startsWith("EVALUATOR#")) {
+      evaluatorAccess.push(toEvaluatorAccess(it));
+      if (sub && it.evaluatorId === sub && it.enabled !== false) canEvaluate = true;
+    }
   }
   if (!meta) return null;
   // No comparator sorts in APPSYNC_JS: clients sort sessions by date/order and players by colour/number.
@@ -169,6 +183,8 @@ export function assembleTryout(tryoutId, items) {
     createdAt: meta.createdAt || null,
     sessions,
     players,
+    canEvaluate,
+    evaluatorAccess,
   };
 }
 
