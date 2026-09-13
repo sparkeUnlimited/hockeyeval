@@ -1,0 +1,107 @@
+# Hockey tryout evaluation API.
+# Players are identified ONLY by pinnie colour + number (e.g. "W-14").
+# There is intentionally no field anywhere in this schema that can carry a
+# player's name, birthdate, photo or contact details. Do not add one.
+
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Tryout {
+  id: ID!
+  name: String!
+  season: String!
+  status: String!          # open | closed
+  createdAt: AWSDateTime
+  sessions: [Session!]!
+  players: [Player!]!
+}
+
+type Session {
+  id: ID!
+  label: String!
+  date: AWSDate!
+  type: String!            # skills | scrimmage | game
+  order: Int!
+}
+
+type Player {
+  playerNumber: ID!        # "<colour letter>-<two digit number>", e.g. "W-14"
+  colour: String!
+  number: Int!
+  position: String!        # F | D | G
+  active: Boolean!
+}
+
+type Evaluation {
+  playerNumber: ID!
+  sessionId: ID!
+  evaluatorId: ID!         # Cognito sub of the evaluator; always taken from identity, never from args
+  scores: AWSJSON!         # { criterionKey: 1..5 }
+  tier: String             # A | B | C | X
+  notes: String            # <= 280 chars, no names
+  updatedAt: AWSDateTime!
+  clientId: ID
+}
+
+type EvaluationPage {
+  items: [Evaluation!]!
+  nextToken: String
+}
+
+type EvaluatorProfile {
+  id: ID!
+  displayName: String!     # e.g. "Evaluator 3"
+  role: String!
+}
+
+input PlayerInput {
+  colour: String!
+  number: Int!
+  position: String!
+  active: Boolean
+}
+
+type Query {
+  # The tryout evaluators and admin are working on (most recently created).
+  currentTryout: Tryout
+
+  # An evaluator's own scores for one session. Filtered server-side by identity.
+  myEvaluations(tryoutId: ID!, sessionId: ID!): [Evaluation!]!
+
+  # Admin only: every evaluation in the tryout, optionally for a single session.
+  allEvaluations(tryoutId: ID!, sessionId: ID, nextToken: String): EvaluationPage!
+    @aws_auth(cognito_groups: ["admin"])
+
+  # Admin only.
+  evaluators: [EvaluatorProfile!]! @aws_auth(cognito_groups: ["admin"])
+}
+
+type Mutation {
+  # Upsert. evaluatorId comes from the caller's identity. Rejected when the tryout is closed.
+  upsertEvaluation(
+    tryoutId: ID!
+    sessionId: ID!
+    playerNumber: ID!
+    scores: AWSJSON!
+    tier: String
+    notes: String
+    clientId: ID!
+  ): Evaluation!
+
+  createTryout(name: String!, season: String!): Tryout! @aws_auth(cognito_groups: ["admin"])
+  addSession(tryoutId: ID!, label: String!, date: AWSDate!, type: String!): Session!
+    @aws_auth(cognito_groups: ["admin"])
+  upsertPlayers(tryoutId: ID!, players: [PlayerInput!]!): [Player!]! @aws_auth(cognito_groups: ["admin"])
+  setPlayerActive(tryoutId: ID!, playerNumber: ID!, active: Boolean!): Player!
+    @aws_auth(cognito_groups: ["admin"])
+  # Lambda-backed (Cognito AdminCreateUser). Cognito emails the temporary password.
+  createEvaluator(email: AWSEmail!, displayName: String!): EvaluatorProfile!
+    @aws_auth(cognito_groups: ["admin"])
+  # Lambda-backed. Removes the Cognito user and their profile. Their scores are kept (by id only).
+  deleteEvaluator(id: ID!): ID! @aws_auth(cognito_groups: ["admin"])
+  closeTryout(tryoutId: ID!): Tryout! @aws_auth(cognito_groups: ["admin"])
+  # Lambda-backed. Presigned S3 PUT URL for a CSV export (valid 5 minutes).
+  exportUrl(tryoutId: ID!, filename: String!): AWSURL! @aws_auth(cognito_groups: ["admin"])
+}

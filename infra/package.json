@@ -1,0 +1,19 @@
+{
+  "name": "tryout-evaluator-infra",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "diff": "cdk diff"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2",
+    "constructs": "^10",
+    "esbuild": "^0.25"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2"
+  }
+}

@@ -10,3 +10,4 @@ tests/e2e/screenshots-tmp/
 playwright-report/
 test-results/
 .env
+infra/.build/
