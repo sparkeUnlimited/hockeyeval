@@ -1,0 +1,12 @@
+node_modules/
+cdk.out/
+cdk.context.json
+.DS_Store
+.~lock.*#
+*.log
+infra/outputs.json
+web/js/config.js
+tests/e2e/screenshots-tmp/
+playwright-report/
+test-results/
+.env
