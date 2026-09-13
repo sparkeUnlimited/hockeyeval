@@ -25,6 +25,7 @@ const PLAYER_NUMBER_RE = "^[A-Z]-[0-9]{2,3}$";
 const DATE_RE = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$";
 const COLOUR_RE = "^[A-Za-z]{2,20}$";
 const SESSION_TYPES = ["skills", "scrimmage", "game"];
+const JERSEYS = ["primary", "secondary"];
 const POSITIONS = ["F", "D", "G"];
 const TIERS = ["A", "B", "C", "X"];
 
@@ -69,6 +70,18 @@ export function requireText(value, what, max) {
 export function requireSessionType(value) {
   if (!SESSION_TYPES.includes(value)) util.error("type must be skills, scrimmage or game", "BadRequest");
   return value;
+}
+
+export function requireJersey(value) {
+  if (value === null || value === undefined || value === "") return "primary";
+  if (!JERSEYS.includes(value)) util.error("jersey must be primary or secondary", "BadRequest");
+  return value;
+}
+
+/** Optional secondary colour: null when absent, otherwise validated like the primary. */
+export function optionalColour(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return requireColour(value);
 }
 
 export function requirePosition(value) {
@@ -140,6 +153,7 @@ export function toPlayer(item) {
   return {
     playerNumber: item.playerNumber,
     colour: item.colour,
+    colour2: item.colour2 || null,
     number: item.number,
     position: item.position,
     active: item.active !== false,
@@ -147,7 +161,7 @@ export function toPlayer(item) {
 }
 
 export function toSession(item) {
-  return { id: item.sessionId, label: item.label, date: item.date, type: item.type, order: item.order };
+  return { id: item.sessionId, label: item.label, date: item.date, type: item.type, order: item.order, jersey: item.jersey || "primary" };
 }
 
 export function toEvaluatorAccess(item) {

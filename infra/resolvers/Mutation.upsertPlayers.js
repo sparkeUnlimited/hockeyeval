@@ -1,7 +1,7 @@
 import { util } from "@aws-appsync/utils";
 import {
   TABLE_NAME, tryoutPK, playerSK, makePlayerNumber,
-  requireAdmin, requireId, requireColour, requireNumber, requirePosition, toPlayer, failOnError,
+  requireAdmin, requireId, requireColour, optionalColour, requireNumber, requirePosition, toPlayer, failOnError,
 } from "./shared.js";
 
 export function request(ctx) {
@@ -14,6 +14,7 @@ export function request(ctx) {
   const items = [];
   for (const p of input) {
     const colour = requireColour(p.colour);
+    const colour2 = optionalColour(p.colour2);
     const number = requireNumber(p.number);
     const position = requirePosition(p.position);
     const playerNumber = makePlayerNumber(colour, number);
@@ -25,6 +26,7 @@ export function request(ctx) {
       tryoutId,
       playerNumber,
       colour,
+      colour2,
       number,
       position,
       active: p.active !== false,

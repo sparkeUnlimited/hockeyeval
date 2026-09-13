@@ -3,6 +3,7 @@ import { requireAuth, signOut, store } from "./auth.js";
 import {
   gql, enqueueEvaluation, subscribe, flush, startSyncLoop, setCurrentUser, onSynced, retryFailed, failedEntries,
   registerServiceWorker, NetworkError, AuthError, Q_CURRENT_TRYOUT, Q_MY_EVALS, normalizeTryout, parseScores, swatchColour,
+  wornColour, wornCode,
 } from "./api.js";
 import { SCALE, TIERS, criteriaFor, NOTES_MAX } from "./criteria.js";
 
@@ -48,6 +49,9 @@ function clientIdFor(playerNumber) {
 }
 
 const isClosed = () => state.tryout?.status !== "open";
+const currentSession = () => state.tryout?.sessions.find((s) => s.id === state.sessionId) || null;
+const colourOf = (p) => wornColour(currentSession(), p);   // jersey colour worn in the selected session
+const codeOf = (p) => wornCode(currentSession(), p);
 const canEvaluate = () => state.tryout?.canEvaluate === true;
 /** Scoring is blocked when the tryout is closed or the caller is not an enabled evaluator on it. */
 const isReadOnly = () => isClosed() || !canEvaluate();
@@ -124,7 +128,7 @@ function renderHeader() {
   const sel = $("sessionSelect");
   sel.innerHTML = "";
   for (const s of state.tryout?.sessions || []) {
-    sel.append(el("option", { value: s.id }, `${s.label} · ${s.date}`));
+    sel.append(el("option", { value: s.id }, `${s.label} · ${s.date}${s.jersey === "secondary" ? " · 2nd jerseys" : ""}`));
   }
   sel.value = state.sessionId || "";
   sel.disabled = !state.tryout?.sessions?.length;
@@ -152,7 +156,7 @@ function renderBanner() {
 function renderChips() {
   const chips = $("chips");
   chips.innerHTML = "";
-  const colours = [...new Set(activePlayers().map((p) => p.colour))].sort();
+  const colours = [...new Set(activePlayers().map(colourOf))].sort();
   const mk = (label, pressed, onclick, swatch) => {
     const c = el("button", { class: "chip", type: "button", "aria-pressed": String(pressed), onclick });
     if (swatch) c.append(el("span", { class: "sw", style: `background:${swatchColour(swatch)}` }));
@@ -165,7 +169,9 @@ function renderChips() {
 }
 
 function filteredPlayers() {
-  return activePlayers().filter((p) => (!state.filter.colour || p.colour === state.filter.colour) && (!state.filter.position || p.position === state.filter.position));
+  return activePlayers()
+    .filter((p) => (!state.filter.colour || colourOf(p) === state.filter.colour) && (!state.filter.position || p.position === state.filter.position))
+    .sort((a, b) => (colourOf(a) < colourOf(b) ? -1 : colourOf(a) > colourOf(b) ? 1 : a.number - b.number));
 }
 
 function renderGrid() {
@@ -181,12 +187,12 @@ function renderGrid() {
     const done = hasContent(e);
     const btn = el("button", {
       class: `player${done ? " done" : ""}`, type: "button",
-      "aria-label": `${p.playerNumber} ${p.position}${done ? ", scored" : ""}`,
+      "aria-label": `${codeOf(p)} ${p.position}${done ? ", scored" : ""}`,
       onclick: () => openSheet(p.playerNumber),
     },
-      el("span", { class: "sw", style: `background:${swatchColour(p.colour)}` }),
+      el("span", { class: "sw", style: `background:${swatchColour(colourOf(p))}` }),
       el("span", { class: "num" }, String(p.number).padStart(2, "0")),
-      el("span", { class: "pos" }, `${p.colour.charAt(0)} · ${p.position}`),
+      el("span", { class: "pos" }, `${colourOf(p).charAt(0)} · ${p.position}`),
     );
     if (done) btn.append(el("span", { class: "check", "aria-hidden": "true" }, "✓"));
     if (e?.tier) btn.append(el("span", { class: "tier" }, e.tier));
@@ -209,9 +215,13 @@ function openSheet(playerNumber) {
   if (!p) return;
   state.current = playerNumber;
   const e = state.evals[playerNumber] || { scores: {}, tier: null, notes: "" };
-  $("sheetSw").style.background = swatchColour(p.colour);
-  $("sheetNum").textContent = playerNumber;
+  $("sheetSw").style.background = swatchColour(colourOf(p));
+  $("sheetNum").textContent = codeOf(p);
   $("sheetPos").textContent = `· ${p.position}`;
+  // When this session uses the secondary jersey, remind the evaluator of the player's usual code.
+  const alt = $("sheetAlt");
+  alt.hidden = codeOf(p) === p.playerNumber;
+  alt.textContent = `${colourOf(p)} ${p.number} this session · usually ${p.playerNumber} (${p.colour})`;
   $("sheet").classList.toggle("readonly", isReadOnly());
 
   const crit = $("criteria");
@@ -368,8 +378,9 @@ onSynced(() => { /* status listener already updates the dot */ });
 $("sessionSelect").addEventListener("change", async (ev) => {
   state.sessionId = ev.target.value;
   store.set(KEY_SESSION, state.sessionId);
+  state.filter.colour = null; // colours differ between jersey sets
   await loadEvaluations();
-  renderGrid(); renderProgress();
+  renderChips(); renderGrid(); renderProgress();
 });
 
 $("signOutBtn").addEventListener("click", () => {

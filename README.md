@@ -43,6 +43,14 @@ and a new tryout starts with nobody added. The write resolver fetches the caller
 `BatchGetItem` as the tryout, session and player, and rejects with `Forbidden` when it is missing or disabled.
 Queued offline scores from a disabled evaluator are rejected on sync and shown as such on their phone.
 
+**Two jersey colours.** Every player gets a primary and a secondary jersey colour at registration; the number is
+the same on both. A player's identity for the whole tryout is the primary code (`W-14`). Each session is marked
+`primary` or `secondary` (skills sessions default to primary, scrimmages to secondary), and the evaluator grid
+shows the colour worn in that session with the same number (`W-14` appears as `G-14` when Green is the second
+jersey). Scores always attach to the primary code; the raw CSV records what the player was wearing (`worn_as`).
+The Setup tab flags any session where two players would show the same code. Colour fields are free text with
+type-ahead of colours already in use.
+
 **Rubric.** `web/js/criteria.js` is the single source of truth for criteria, weights, anchors and tiers. The
 evaluator form, the admin rankings, the CSV headers, the resolvers (which strip unknown keys) and the tests all
 import it.
@@ -136,7 +144,8 @@ association, point the pool at Amazon SES.
 ### 3. Set up the tryout
 
 Sign in at the CloudFront URL with the admin account. On **Setup**: create the tryout, add sessions, add
-players (paste `colour,number,position` lines or add one at a time) and create evaluator logins. New logins
+players (paste `colour,number,position,colour2` lines, the fourth column being the secondary jersey colour, or
+add one at a time) and create evaluator logins. New logins
 are added to the current tryout automatically; logins created from the CLI show as *not added* until you click
 *Add to tryout*. Or load players from the command line (needs an admin with a password):
 
@@ -144,8 +153,8 @@ are added to the current tryout automatically; logins created from the CLI show 
 TRYOUT_ADMIN_EMAIL=convenor@example.com TRYOUT_ADMIN_PASSWORD='...' node scripts/seed-players.js docs/players.example.csv
 ```
 
-The seed script refuses any file that does not have exactly three columns, so a roster with names cannot be
-loaded by mistake.
+The seed script accepts three or four columns (`colour,number,position[,colour2]`) and refuses anything else, so a
+roster with names cannot be loaded by mistake.
 
 Evaluators can also be created from the CLI: `scripts/create-user.sh eval3@example.com evaluator --label 'Evaluator 3'`.
 
@@ -225,5 +234,7 @@ only thing that grows, and log groups expire after 30 days.
   `fetch` instead of `amazon-cognito-identity-js`, at the owner's request.
 - A per-tryout evaluator allowlist (`TRYOUT#/EVALUATOR#` rows, `setEvaluatorAccess`, `Tryout.canEvaluate`,
   `Tryout.evaluatorAccess`) gates every write, also at the owner's request.
+- Players carry an optional `colour2` and sessions a `jersey` (`primary`/`secondary`) plus an `updateSession`
+  mutation, so scrimmages can be played in the second jersey set without changing player identities.
 - The Lambda runs Node 22 (Node 20 is deprecated for new functions).
 - Comparator sorts are done on the client because the APPSYNC_JS runtime does not allow them.

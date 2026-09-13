@@ -218,6 +218,7 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.addSession.1.count.js", { tryoutId: TRYOUT, label: "Skate 1", date: "2026-09-20", type: "skills" }],
       ["Mutation.addSession.2.put.js", { tryoutId: TRYOUT, label: "Skate 1", date: "2026-09-20", type: "skills" }],
       ["Mutation.upsertPlayers.js", { tryoutId: TRYOUT, players: [{ colour: "White", number: 14, position: "D" }] }],
+      ["Mutation.updateSession.js", { tryoutId: TRYOUT, sessionId: SESSION, jersey: "secondary" }],
       ["Mutation.setPlayerActive.js", { tryoutId: TRYOUT, playerNumber: "W-14", active: false }],
       ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],
       ["Mutation.closeTryout.1.close.js", { tryoutId: TRYOUT }],
@@ -253,14 +254,16 @@ describe("Mutation.upsertPlayers", () => {
   let mod;
   before(async () => { mod = await loadResolver("Mutation.upsertPlayers.js"); });
 
-  test("derives playerNumber as colour letter + zero-padded number and defaults active=true", () => {
+  test("derives playerNumber from the PRIMARY colour letter + zero-padded number; secondary colour is optional", () => {
     const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, players: [
-      { colour: "white", number: 7, position: "F" }, { colour: "Blue", number: 14, position: "D", active: false },
+      { colour: "white", number: 7, position: "F", colour2: "green" }, { colour: "Blue", number: 14, position: "D", active: false },
     ] } }));
     assert.equal(req.operation, "BatchPutItem");
     const items = req.tables.TryoutTable.map(fromMapValues);
-    assert.equal(items[0].playerNumber, "W-07");
+    assert.equal(items[0].playerNumber, "W-07", "identity uses the primary colour even when a secondary is set");
     assert.equal(items[0].colour, "White");
+    assert.equal(items[0].colour2, "Green");
+    assert.equal(items[1].colour2, null);
     assert.equal(items[0].active, true);
     assert.equal(items[1].playerNumber, "B-14");
     assert.equal(items[1].active, false);
@@ -271,6 +274,7 @@ describe("Mutation.upsertPlayers", () => {
     const base = { tryoutId: TRYOUT };
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { ...base, players: [{ colour: "White", number: 1, position: "C" }] } })), "BadRequest", /position/);
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { ...base, players: [{ colour: "Wh1te", number: 1, position: "F" }] } })), "BadRequest", /colour/);
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { ...base, players: [{ colour: "White", colour2: "Gr33n", number: 1, position: "F" }] } })), "BadRequest", /colour/);
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { ...base, players: [{ colour: "White", number: 1.5, position: "F" }] } })), "BadRequest", /number/);
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { ...base, players: [
       { colour: "White", number: 1, position: "F" }, { colour: "white", number: 1, position: "D" },
@@ -391,6 +395,29 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     const first = ctx({ identity: adminIdentity(), args, result: { items: [], scannedCount: 0 } });
     count.response(first);
     assert.equal(fromMapValues(put.request(first).attributeValues).order, 1);
+    // jersey defaults to primary and must be primary|secondary
+    assert.equal(fromMapValues(put.request(first).attributeValues).jersey, "primary");
+    const sec = ctx({ identity: adminIdentity(), args: { ...args, jersey: "secondary" }, result: { items: [], scannedCount: 0 } });
+    count.response(sec);
+    assert.equal(fromMapValues(put.request(sec).attributeValues).jersey, "secondary");
+    throwsType(() => count.request(ctx({ identity: adminIdentity(), args: { ...args, jersey: "third" } })), "BadRequest", /jersey/);
+  });
+
+  test("updateSession changes only the fields given and rejects an empty update", async () => {
+    const mod = await loadResolver("Mutation.updateSession.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, jersey: "secondary" } }));
+    assert.equal(req.operation, "UpdateItem");
+    assert.equal(req.update.expression, "SET #jersey = :jersey");
+    assert.deepEqual(req.update.expressionNames, { "#jersey": "jersey" });
+    assert.deepEqual(fromMapValues(req.update.expressionValues), { ":jersey": "secondary" });
+    assert.equal(req.condition.expression, "attribute_exists(PK)");
+    const two = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, label: " Skate 3 ", type: "game" } }));
+    assert.equal(two.update.expression, "SET #label = :label, #type = :type");
+    assert.deepEqual(fromMapValues(two.update.expressionValues), { ":label": "Skate 3", ":type": "game" });
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION } })), "BadRequest", /Nothing/);
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, jersey: "both" } })), "BadRequest", /jersey/);
+    const out = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "game", order: 2 } }));
+    assert.equal(out.jersey, "primary", "sessions created before the jersey field default to primary");
   });
 
   test("setPlayerActive updates only the active flag with an existence condition", async () => {

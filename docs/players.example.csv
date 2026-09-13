@@ -1,14 +1,14 @@
-# colour,number,position   (F = forward, D = defence, G = goalie). No names, ever.
-colour,number,position
-White,1,G
-White,4,D
-White,7,F
-White,9,F
-White,12,D
-White,14,F
-Blue,1,G
-Blue,3,D
-Blue,8,F
-Blue,10,F
-Blue,15,D
-Blue,17,F
+# colour,number,position,colour2   (F = forward, D = defence, G = goalie). colour = primary jersey, colour2 = secondary jersey. No names, ever.
+colour,number,position,colour2
+White,1,G,Green
+White,4,D,Green
+White,7,F,Green
+White,9,F,Green
+White,12,D,Green
+White,14,F,Green
+Blue,1,G,Yellow
+Blue,3,D,Yellow
+Blue,8,F,Yellow
+Blue,10,F,Yellow
+Blue,15,D,Yellow
+Blue,17,F,Yellow

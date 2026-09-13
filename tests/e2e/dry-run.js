@@ -29,8 +29,9 @@ const EVAL = { email: env.E2E_EVALUATOR_EMAIL || "evaluator1@mock.test", passwor
 const HEADLESS = env.E2E_HEADLESS !== "0";
 const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, "");
 const TRYOUT_NAME = `Dry run ${stamp}`;
-const PLAYERS = [["White", 1, "G"], ["White", 4, "D"], ["White", 7, "F"], ["White", 9, "F"], ["White", 12, "D"], ["White", 14, "F"],
-  ["Blue", 1, "G"], ["Blue", 3, "D"], ["Blue", 8, "F"], ["Blue", 10, "F"], ["Blue", 15, "D"], ["Blue", 17, "F"]];
+// colour,number,position,colour2 — every player has a primary and a secondary jersey colour.
+const PLAYERS = [["White", 1, "G", "Green"], ["White", 4, "D", "Green"], ["White", 7, "F", "Green"], ["White", 9, "F", "Green"], ["White", 12, "D", "Green"], ["White", 14, "F", "Green"],
+  ["Blue", 1, "G", "Yellow"], ["Blue", 3, "D", "Yellow"], ["Blue", 8, "F", "Yellow"], ["Blue", 10, "F", "Yellow"], ["Blue", 15, "D", "Yellow"], ["Blue", 17, "F", "Yellow"]];
 
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const assert = (cond, msg) => { if (!cond) throw new Error(`ASSERT: ${msg}`); };
@@ -69,14 +70,15 @@ try {
   log("tryout created");
 
   const today = new Date().toISOString().slice(0, 10);
-  for (const [label, type] of [["Skate 1 – Skills", "skills"], ["Skate 2 – Scrimmage", "scrimmage"]]) {
+  for (const [label, type, jersey] of [["Skate 1 – Skills", "skills", "primary"], ["Skate 2 – Scrimmage", "scrimmage", "secondary"]]) {
     await admin.fill("#sLabel", label);
     await admin.fill("#sDate", today);
     await admin.selectOption("#sType", type);
+    await admin.selectOption("#sJersey", jersey);
     await admin.click("#sessionForm button[type=submit]");
-    await admin.locator("#sessionsBody tr", { hasText: label }).waitFor({ timeout: 20000 });
+    await admin.locator("#sessionsBody tr", { hasText: label }).locator(".pill", { hasText: jersey }).waitFor({ timeout: 20000 });
   }
-  log("2 sessions added");
+  log("2 sessions added (skills = primary jerseys, scrimmage = secondary jerseys)");
 
   await admin.fill("#playersCsv", PLAYERS.map((p) => p.join(",")).join("\n"));
   await admin.click("#playersCsvForm button[type=submit]");
@@ -154,6 +156,23 @@ try {
   assert(/^Synced$/.test((await ev.locator("#syncText").textContent()).trim()), "should be fully synced before going offline");
   assert((await ev.locator(".player.done").count()) === 6, "6 players should show as scored");
   log("6 players scored online and synced");
+
+  // ------------------------------------------------------------------ Secondary jerseys in session 2
+  await ev.selectOption("#sessionSelect", { index: 1 });
+  await ev.locator('.player[aria-label^="G-14"]').waitFor({ timeout: 10000 }); // grid re-renders after the session loads
+  const codes2 = await ev.locator(".player").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label").split(" ")[0]));
+  assert(codes2.every((c) => /^[GY]-\d\d$/.test(c)), `session 2 should show Green/Yellow codes, saw ${codes2.join(" ")}`);
+  assert(codes2.includes("G-14") && codes2.includes("Y-17"), "W-14 should appear as G-14 and B-17 as Y-17");
+  await ev.locator(".player", { hasText: "14" }).first().click();
+  await ev.locator("#sheet").waitFor({ state: "visible" });
+  assert((await ev.locator("#sheetNum").textContent()) === "G-14", "sheet shows the worn code");
+  assert(/usually W-14/.test(await ev.locator("#sheetAlt").textContent()), "sheet reminds of the primary code");
+  await ev.click("#sheetClose");
+  await ev.selectOption("#sessionSelect", { index: 0 });
+  await ev.locator('.player[aria-label^="W-14"]').waitFor({ timeout: 10000 });
+  const codes1 = await ev.locator(".player").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label").split(" ")[0]));
+  assert(codes1.includes("W-14") && codes1.includes("B-17"), "session 1 shows primary codes again");
+  log("secondary jersey colours shown in the scrimmage session, primary in skills");
 
   // ------------------------------------------------------------------ Evaluator: offline, 3 more
   await evalCtx.setOffline(true);

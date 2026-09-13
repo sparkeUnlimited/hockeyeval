@@ -25,32 +25,42 @@ click *Create tryout*. Everyone who signs in from now on sees this tryout.
 
 ### 3. Add the ice times
 
-Under *Sessions*, add one line per skate: a label (`Skate 1 – Skills`), the date, and the type (skills,
-scrimmage or game). Evaluators pick the session they are scoring from a dropdown, and it defaults to today's.
+Under *Sessions*, add one line per skate: a label (`Skate 1 – Skills`), the date, the type (skills, scrimmage or
+game) and which **jerseys** are worn: primary or secondary (see the next step). Skills sessions normally use the
+primary colours and scrimmages the secondary ones; the form suggests that, and you can switch a session later
+with the button in the table. Evaluators pick the session they are scoring from a dropdown, and it defaults to
+today's.
 
-### 4. Plan pinnies and enter the players
+### 4. Plan jerseys and enter the players
 
-Buy or borrow numbered pinnies in colours whose **first letters are all different**: White, Blue, Red, Green,
-Yellow, Orange work well. Avoid Blue and Black together. Each player is known everywhere as colour letter plus
-number: White 14 is `W-14`, Blue 7 is `B-07`.
+Every player gets **two jerseys at registration, in two colours, with the same number on both**: for example
+White 14 for skills and Green 14 for scrimmages. The number never changes, so a player is always recognisable.
+Within each jersey set use colours whose **first letters are all different** (White, Blue, Red for the first
+set; Green, Yellow, Orange for the second). Avoid Blue and Black in the same set.
 
-Together with the registrar, decide which player wears which pinnie. The registrar writes the number-to-name list
-and keeps it. You never need it, and the app has nowhere to put it.
+Each player is known in the app by their primary colour letter plus number: White 14 is `W-14`. When a session
+uses the secondary jerseys, evaluators see that player as `G-14` on their screen, with a reminder that it is the
+same player as `W-14`; all the scores still land on `W-14`.
+
+Together with the registrar, decide which player gets which number and colours. The registrar writes the
+number-to-name list and keeps it. You never need it, and the app has nowhere to put it.
 
 Then enter the players in the app, with **no names**. Under *Players*, either paste lines like
 
 ```
-White,14,D
-White,7,F
-Blue,1,G
+White,14,D,Green
+White,7,F,Green
+Blue,1,G,Yellow
 ```
 
-(colour, number, F/D/G) or add them one at a time. If a player withdraws or is released between skates, click
+(primary colour, number, F/D/G, secondary colour) or add them one at a time. You can type any colour name; ones
+already in use are suggested as you type. The app refuses a combination that would make two players show the same
+code in the same session, and the *Sessions* table flags it if it ever happens. If a player withdraws or is released between skates, click
 *Release* next to their number; they disappear from the evaluators' screens and from rankings but their scores
 are kept. *Reinstate* brings them back.
 
-If you have a spreadsheet, export just those three columns to a CSV and paste it. The app refuses any line with
-more than three fields, so a roster with names cannot be loaded by accident.
+If you have a spreadsheet, export just those three or four columns to a CSV and paste it. The app refuses any
+other layout, so a roster with names cannot be loaded by accident.
 
 ### 5. Create evaluator logins and add them to the tryout
 
@@ -84,7 +94,9 @@ Fifteen minutes, ideally with the evaluation guide in hand:
 ### What evaluators see
 
 The evaluator screen shows the tryout name, a session picker, a sync dot, filter chips (All / each colour /
-F / D / G) and a grid of big buttons, one per active player, showing the colour, number and position. Tapping a
+F / D / G) and a grid of big buttons, one per active player, showing the colour **worn in that session**, the
+number and the position. Sessions played in the secondary jerseys are marked "2nd jerseys" in the picker, and
+the scoring sheet reminds the evaluator of the player's usual code. Tapping a
 player slides up a scoring sheet:
 
 - one row per criterion for that position, with five big buttons `1 2 3 4 5` (tap the criterion name, or press and
@@ -200,6 +212,8 @@ logins cannot create stray evaluations. Old tryouts stay in storage but are no l
   delete and recreate their login on the Setup tab (their old scores are kept).
 - **An evaluator sees "not on the evaluator list"**: on the Setup tab, click *Add to tryout* or *Enable* next to
   their label, then have them reload.
+- **The grid shows the wrong colours for a session**: on the Setup tab, use *Switch to primary* / *Switch to
+  secondary* next to that session. Evaluators reload and see the right jerseys; nothing about the scores changes.
 - **A player has the wrong position or number**: add the correct one, then *Release* the wrong one. Scores under
   the wrong code stay with the wrong code, so fix this before the first skate if you can.
 - **Two colours start with the same letter**: the app blocks it. Rename one colour (e.g. `Dark` for black).

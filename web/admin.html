@@ -48,30 +48,34 @@
 
     <div class="card" id="sessionsCard">
       <h2>Sessions (ice times)</h2>
-      <div class="table-wrap" style="margin-bottom:.75rem"><table><thead><tr><th>#</th><th>Label</th><th>Date</th><th>Type</th></tr></thead><tbody id="sessionsBody"></tbody></table></div>
+      <p class="small muted">Each session says which of the two jersey colours players wear. Skills sessions normally use the primary colour; scrimmages often use the secondary one. Evaluators see the colour worn that session; scores always stay with the player.</p>
+      <div class="table-wrap" style="margin-bottom:.75rem"><table><thead><tr><th>#</th><th>Label</th><th>Date</th><th>Type</th><th>Jerseys</th><th></th></tr></thead><tbody id="sessionsBody"></tbody></table></div>
       <form id="sessionForm" class="row">
         <div class="field grow"><label for="sLabel">Label</label><input id="sLabel" type="text" maxlength="60" placeholder="Skate 2 – Scrimmage" required></div>
         <div class="field"><label for="sDate">Date</label><input id="sDate" type="date" required></div>
         <div class="field"><label for="sType">Type</label>
           <select id="sType"><option value="skills">skills</option><option value="scrimmage">scrimmage</option><option value="game">game</option></select></div>
+        <div class="field"><label for="sJersey">Jerseys</label>
+          <select id="sJersey"><option value="primary">primary colour</option><option value="secondary">secondary colour</option></select></div>
         <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Add session</button></div>
       </form>
     </div>
 
     <div class="card" id="playersCard">
       <h2>Players</h2>
-      <p class="small muted">Players are pinnie colour + number only. Use colours with different first letters (White, Blue, Red, Green, Yellow, Orange…). <b>Never paste a roster with names.</b></p>
+      <p class="small muted">Players are jersey colour + number only. Every player gets a <b>primary</b> and a <b>secondary</b> jersey colour at registration; the number is the same on both. A player's code is built from the primary colour (White 14 = <code>W-14</code>). Within one jersey set, use colours with different first letters. Type any colour name; ones already in use are suggested. <b>Never paste a roster with names.</b></p>
       <div class="row" style="align-items:flex-start">
         <form id="playersCsvForm" class="grow">
           <div class="field">
-            <label for="playersCsv">Paste CSV: <code>colour,number,position</code> (F, D or G), one per line</label>
-            <textarea id="playersCsv" rows="6" placeholder="White,14,D&#10;White,7,F&#10;Blue,1,G"></textarea>
+            <label for="playersCsv">Paste CSV: <code>colour,number,position,colour2</code> (F, D or G; colour2 optional), one per line</label>
+            <textarea id="playersCsv" rows="6" placeholder="White,14,D,Green&#10;White,7,F,Green&#10;Blue,1,G,Yellow"></textarea>
           </div>
           <p id="playersCsvError" class="error" hidden></p>
           <button class="btn primary" type="submit">Add players from CSV</button>
         </form>
         <form id="playerForm" style="flex:0 0 260px">
-          <div class="field"><label for="pColour">Colour</label><input id="pColour" type="text" maxlength="20" placeholder="White" required></div>
+          <div class="field"><label for="pColour">Primary colour</label><input id="pColour" type="text" maxlength="20" placeholder="White" list="colourList" required></div>
+          <div class="field"><label for="pColour2">Secondary colour</label><input id="pColour2" type="text" maxlength="20" placeholder="Green" list="colourList"></div>
           <div class="field"><label for="pNumber">Number</label><input id="pNumber" type="number" min="0" max="999" required></div>
           <div class="field"><label for="pPosition">Position</label>
             <select id="pPosition"><option>F</option><option>D</option><option>G</option></select></div>
@@ -79,7 +83,8 @@
         </form>
       </div>
       <div class="toolbar" style="margin-top:.75rem"><label><input id="showInactive" type="checkbox"> Show released players</label><span id="playerCount" class="muted small"></span></div>
-      <div class="table-wrap"><table><thead><tr><th>Player</th><th>Colour</th><th class="num">No.</th><th>Pos</th><th>Status</th><th></th></tr></thead><tbody id="playersBody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Player</th><th>Primary</th><th>Secondary</th><th class="num">No.</th><th>Pos</th><th>Status</th><th></th></tr></thead><tbody id="playersBody"></tbody></table></div>
+      <datalist id="colourList"></datalist>
     </div>
 
     <div class="card" id="evaluatorsCard">

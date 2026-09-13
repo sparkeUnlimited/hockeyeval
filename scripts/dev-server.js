@@ -116,6 +116,7 @@ const FIELDS = {
   upsertEvaluation: [await R("Mutation.upsertEvaluation.1.loadContext.js"), await R("Mutation.upsertEvaluation.2.put.js")],
   createTryout: [await R("Mutation.createTryout.js")],
   addSession: [await R("Mutation.addSession.1.count.js"), await R("Mutation.addSession.2.put.js")],
+  updateSession: [await R("Mutation.updateSession.js")],
   upsertPlayers: [await R("Mutation.upsertPlayers.js")],
   setPlayerActive: [await R("Mutation.setPlayerActive.js")],
   setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],
@@ -124,7 +125,7 @@ const FIELDS = {
   deleteEvaluator: [await R("Lambda.adminOps.js")],
   exportUrl: [await R("Lambda.adminOps.js")],
 };
-const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "setPlayerActive", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
+const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
 
 async function runField(field, args, identity) {
   const ctx = { args, arguments: args, identity, stash: {}, prev: { result: null }, result: null, error: null, info: { fieldName: field, parentTypeName: "" } };
@@ -171,13 +172,15 @@ function seed() {
   db.set(k(`TRYOUT#${id}`, "META"), { PK: `TRYOUT#${id}`, SK: "META", tryoutId: id, name: "2026-27 U13 Rep B (seed)", season: "2026-27", status: "open", createdAt: new Date().toISOString() });
   db.set(k("CONFIG", "CURRENT_TRYOUT"), { PK: "CONFIG", SK: "CURRENT_TRYOUT", tryoutId: id });
   const today = new Date().toISOString().slice(0, 10);
-  [["s1", "Skate 1 – Skills", today, "skills", 1], ["s2", "Skate 2 – Scrimmage", today, "scrimmage", 2]].forEach(([sid, label, date, type, order]) =>
-    db.set(k(`TRYOUT#${id}`, `SESSION#${sid}`), { PK: `TRYOUT#${id}`, SK: `SESSION#${sid}`, tryoutId: id, sessionId: sid, label, date, type, order }));
-  const players = [["White", 1, "G"], ["White", 4, "D"], ["White", 7, "F"], ["White", 9, "F"], ["White", 12, "D"], ["White", 14, "F"],
-    ["Blue", 1, "G"], ["Blue", 3, "D"], ["Blue", 8, "F"], ["Blue", 10, "F"], ["Blue", 15, "D"], ["Blue", 17, "F"], ["Red", 2, "D"], ["Red", 5, "F"], ["Red", 11, "F"]];
-  for (const [colour, number, position] of players) {
+  [["s1", "Skate 1 – Skills", today, "skills", 1, "primary"], ["s2", "Skate 2 – Scrimmage", today, "scrimmage", 2, "secondary"]].forEach(([sid, label, date, type, order, jersey]) =>
+    db.set(k(`TRYOUT#${id}`, `SESSION#${sid}`), { PK: `TRYOUT#${id}`, SK: `SESSION#${sid}`, tryoutId: id, sessionId: sid, label, date, type, order, jersey }));
+  // Every player has two jersey colours; numbers never change.
+  const players = [["White", "Green", 1, "G"], ["White", "Green", 4, "D"], ["White", "Green", 7, "F"], ["White", "Green", 9, "F"], ["White", "Green", 12, "D"], ["White", "Green", 14, "F"],
+    ["Blue", "Yellow", 1, "G"], ["Blue", "Yellow", 3, "D"], ["Blue", "Yellow", 8, "F"], ["Blue", "Yellow", 10, "F"], ["Blue", "Yellow", 15, "D"], ["Blue", "Yellow", 17, "F"],
+    ["Red", "Orange", 2, "D"], ["Red", "Orange", 5, "F"], ["Red", "Orange", 11, "F"]];
+  for (const [colour, colour2, number, position] of players) {
     const pn = `${colour[0]}-${String(number).padStart(2, "0")}`;
-    db.set(k(`TRYOUT#${id}`, `PLAYER#${pn}`), { PK: `TRYOUT#${id}`, SK: `PLAYER#${pn}`, tryoutId: id, playerNumber: pn, colour, number, position, active: true });
+    db.set(k(`TRYOUT#${id}`, `PLAYER#${pn}`), { PK: `TRYOUT#${id}`, SK: `PLAYER#${pn}`, tryoutId: id, playerNumber: pn, colour, colour2, number, position, active: true });
   }
   for (const [email, label] of [["evaluator1@mock.test", "Evaluator 1"], ["evaluator2@mock.test", "Evaluator 2"]]) {
     const sub = subFor(email);

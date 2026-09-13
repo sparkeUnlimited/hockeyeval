@@ -236,15 +236,15 @@ export function registerServiceWorker() {
 // ----------------------------------------------------------------------------- Queries used by both screens
 export const Q_CURRENT_TRYOUT = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order }
-  players { playerNumber colour number position active }
+  sessions { id label date type order jersey }
+  players { playerNumber colour colour2 number position active }
 } }`;
 
 /** Admin variant: also lists who may score this tryout (admin-only field). */
 export const Q_CURRENT_TRYOUT_ADMIN = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order }
-  players { playerNumber colour number position active }
+  sessions { id label date type order jersey }
+  players { playerNumber colour colour2 number position active }
   evaluatorAccess { evaluatorId enabled updatedAt }
 } }`;
 
@@ -282,6 +282,16 @@ export async function fetchAllEvaluations(tryoutId, sessionId = null) {
     nextToken = data.allEvaluations.nextToken;
   } while (nextToken);
   return out;
+}
+
+/** Jersey colour a player wears in a session: the secondary colour when the session says so and one is set. */
+export function wornColour(session, player) {
+  return session?.jersey === "secondary" && player.colour2 ? player.colour2 : player.colour;
+}
+
+/** Display code for what is on the ice in a session, e.g. "G-14" for W-14 wearing Green. */
+export function wornCode(session, player) {
+  return `${wornColour(session, player).charAt(0).toUpperCase()}-${String(player.number).padStart(2, "0")}`;
 }
 
 /** CSS colour for a pinnie colour name; unknown colours fall back to grey. */

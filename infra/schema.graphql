@@ -34,11 +34,15 @@ type Session {
   date: AWSDate!
   type: String!            # skills | scrimmage | game
   order: Int!
+  jersey: String!          # primary | secondary: which of the player's two jersey colours is worn this session
 }
 
+# A player's number never changes. Every player gets two jersey colours at registration; the
+# playerNumber identity is built from the primary colour ("W-14") and stays fixed for the tryout.
 type Player {
-  playerNumber: ID!        # "<colour letter>-<two digit number>", e.g. "W-14"
-  colour: String!
+  playerNumber: ID!        # "<primary colour letter>-<two digit number>", e.g. "W-14"
+  colour: String!          # primary jersey colour
+  colour2: String          # secondary jersey colour (worn in sessions marked jersey = secondary)
   number: Int!
   position: String!        # F | D | G
   active: Boolean!
@@ -68,6 +72,7 @@ type EvaluatorProfile {
 
 input PlayerInput {
   colour: String!
+  colour2: String
   number: Int!
   position: String!
   active: Boolean
@@ -102,7 +107,10 @@ type Mutation {
   ): Evaluation!
 
   createTryout(name: String!, season: String!): Tryout! @aws_auth(cognito_groups: ["admin"])
-  addSession(tryoutId: ID!, label: String!, date: AWSDate!, type: String!): Session!
+  addSession(tryoutId: ID!, label: String!, date: AWSDate!, type: String!, jersey: String): Session!
+    @aws_auth(cognito_groups: ["admin"])
+  # Change a session's label, date, type or jersey (all optional; omitted fields keep their value).
+  updateSession(tryoutId: ID!, sessionId: ID!, label: String, date: AWSDate, type: String, jersey: String): Session!
     @aws_auth(cognito_groups: ["admin"])
   upsertPlayers(tryoutId: ID!, players: [PlayerInput!]!): [Player!]! @aws_auth(cognito_groups: ["admin"])
   setPlayerActive(tryoutId: ID!, playerNumber: ID!, active: Boolean!): Player!

@@ -1,7 +1,7 @@
 // Convenor dashboard: setup, rankings, per-evaluator view, CSV export, close.
 // Everything here is by player number only. There is no name field anywhere and no place to type one.
 import { requireAuth, signOut } from "./auth.js";
-import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, AuthError } from "./api.js";
+import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, AuthError } from "./api.js";
 import { CRITERIA, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
 registerServiceWorker();
@@ -166,8 +166,19 @@ function renderSetup() {
   if (!t) return;
 
   const sb = $("sessionsBody"); sb.innerHTML = "";
-  t.sessions.forEach((s, i) => sb.append(el("tr", {}, el("td", {}, String(i + 1)), el("td", {}, s.label), el("td", {}, s.date), el("td", {}, s.type))));
-  if (!t.sessions.length) sb.append(el("tr", {}, el("td", { colspan: 4, class: "muted" }, "No sessions yet.")));
+  t.sessions.forEach((s, i) => {
+    const clash = jerseyClashes(s);
+    sb.append(el("tr", {}, el("td", {}, String(i + 1)), el("td", {}, s.label), el("td", {}, s.date), el("td", {}, s.type),
+      el("td", {}, el("span", { class: `pill ${clash.length ? "bad" : ""}` }, s.jersey === "secondary" ? "secondary" : "primary"),
+        clash.length ? el("span", { class: "small error", style: "margin-left:.4rem" }, `duplicate codes: ${clash.join(", ")}`) : null),
+      el("td", {}, el("button", { class: "btn sm", type: "button", onclick: () => setJersey(s, s.jersey === "secondary" ? "primary" : "secondary") },
+        s.jersey === "secondary" ? "Switch to primary" : "Switch to secondary"))));
+  });
+  if (!t.sessions.length) sb.append(el("tr", {}, el("td", { colspan: 6, class: "muted" }, "No sessions yet.")));
+
+  // Colour suggestions for the free-text colour inputs ("add a colour if needed").
+  const dl = $("colourList"); dl.innerHTML = "";
+  for (const c of knownColours()) dl.append(el("option", { value: c }));
 
   const pb = $("playersBody"); pb.innerHTML = "";
   const players = t.players.filter((p) => state.showInactive || p.active);
@@ -175,12 +186,14 @@ function renderSetup() {
   for (const p of players) {
     pb.append(el("tr", { class: p.active ? "" : "inactive" },
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber)),
-      el("td", {}, p.colour), el("td", { class: "num" }, String(p.number)), el("td", {}, p.position),
+      el("td", {}, p.colour),
+      el("td", {}, p.colour2 ? el("span", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour2)}` }), p.colour2) : el("span", { class: "muted" }, "–")),
+      el("td", { class: "num" }, String(p.number)), el("td", {}, p.position),
       el("td", {}, el("span", { class: `pill ${p.active ? "ok" : "bad"}` }, p.active ? "active" : "released")),
       el("td", {}, el("button", { class: "btn sm", type: "button", onclick: () => setActive(p, !p.active) }, p.active ? "Release" : "Reinstate")),
     ));
   }
-  if (!players.length) pb.append(el("tr", {}, el("td", { colspan: 6, class: "muted" }, "No players yet.")));
+  if (!players.length) pb.append(el("tr", {}, el("td", { colspan: 7, class: "muted" }, "No players yet.")));
 
   const eb = $("evaluatorsBody"); eb.innerHTML = "";
   const access = new Map((t.evaluatorAccess || []).map((a) => [a.evaluatorId, a]));
@@ -226,14 +239,44 @@ $("tryoutForm").addEventListener("submit", async (ev) => {
 $("sessionForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   await run(async () => {
-    await gql(`mutation($tryoutId: ID!, $label: String!, $date: AWSDate!, $type: String!) { addSession(tryoutId: $tryoutId, label: $label, date: $date, type: $type) { id } }`,
-      { tryoutId: state.tryout.id, label: $("sLabel").value.trim(), date: $("sDate").value, type: $("sType").value });
+    await gql(`mutation($tryoutId: ID!, $label: String!, $date: AWSDate!, $type: String!, $jersey: String) { addSession(tryoutId: $tryoutId, label: $label, date: $date, type: $type, jersey: $jersey) { id } }`,
+      { tryoutId: state.tryout.id, label: $("sLabel").value.trim(), date: $("sDate").value, type: $("sType").value, jersey: $("sJersey").value });
     $("sLabel").value = "";
     await loadAll();
   }, "Session added.");
 });
+// Scrimmages default to the secondary jersey in the form; the convenor can still change it.
+$("sType").addEventListener("change", () => { $("sJersey").value = $("sType").value === "skills" ? "primary" : "secondary"; });
 
-/** Parse `colour,number,position` lines. Refuses anything that could be a roster with names. */
+async function setJersey(session, jersey) {
+  await run(async () => {
+    await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $jersey: String) { updateSession(tryoutId: $tryoutId, sessionId: $sessionId, jersey: $jersey) { id jersey } }`,
+      { tryoutId: state.tryout.id, sessionId: session.id, jersey });
+    await loadAll();
+  }, `${session.label} now uses ${jersey} jersey colours.`);
+}
+
+/** Every colour in use (both jersey sets), for the type-ahead lists. */
+function knownColours() {
+  const set = new Set();
+  for (const p of state.tryout?.players || []) { set.add(p.colour); if (p.colour2) set.add(p.colour2); }
+  return [...set].sort();
+}
+
+/** Display codes that would appear twice in a session (e.g. two players both showing "G-07"). */
+function jerseyClashes(session, players = state.tryout?.players || []) {
+  const seen = new Map();
+  const dups = new Set();
+  for (const p of players.filter((x) => x.active)) {
+    const code = wornCode(session, p);
+    if (seen.has(code) && seen.get(code) !== p.playerNumber) dups.add(code); else seen.set(code, p.playerNumber);
+  }
+  return [...dups].sort();
+}
+
+const cap = (c) => c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
+
+/** Parse `colour,number,position[,colour2]` lines. Refuses anything that could be a roster with names. */
 export function parsePlayersCsv(text) {
   const players = [];
   const lines = text.split(/\r?\n/);
@@ -242,30 +285,40 @@ export function parsePlayersCsv(text) {
     if (!raw || raw.startsWith("#")) return;
     const cols = raw.split(/[,\t;]/).map((c) => c.trim().replace(/^"|"$/g, ""));
     if (i === 0 && /^colou?r$/i.test(cols[0])) return; // header row
-    if (cols.length !== 3) throw new Error(`Line ${i + 1}: expected exactly 3 columns (colour,number,position). Rosters with names are not accepted.`);
-    const [colour, number, position] = cols;
+    if (cols.length !== 3 && cols.length !== 4) throw new Error(`Line ${i + 1}: expected 3 or 4 columns (colour,number,position,colour2). Rosters with names are not accepted.`);
+    const [colour, number, position, colour2 = ""] = cols;
     if (/name|dob|birth/i.test(raw)) throw new Error(`Line ${i + 1}: looks like it contains a name or birthdate.`);
     if (!/^[A-Za-z]{2,20}$/.test(colour)) throw new Error(`Line ${i + 1}: colour "${colour}" must be letters only.`);
+    if (colour2 && !/^[A-Za-z]{2,20}$/.test(colour2)) throw new Error(`Line ${i + 1}: secondary colour "${colour2}" must be letters only.`);
     if (!/^\d{1,3}$/.test(number)) throw new Error(`Line ${i + 1}: number "${number}" must be 0-999.`);
     if (!/^[FDG]$/i.test(position)) throw new Error(`Line ${i + 1}: position must be F, D or G.`);
-    players.push({ colour: colour.charAt(0).toUpperCase() + colour.slice(1).toLowerCase(), number: Number(number), position: position.toUpperCase() });
+    players.push({ colour: cap(colour), colour2: colour2 ? cap(colour2) : null, number: Number(number), position: position.toUpperCase() });
   });
   return players;
 }
 
 function checkColourInitials(newPlayers) {
-  const colours = new Set([...(state.tryout?.players || []).map((p) => p.colour), ...newPlayers.map((p) => p.colour)]);
-  const byInitial = new Map();
-  for (const c of colours) { const k = c.charAt(0).toUpperCase(); if (!byInitial.has(k)) byInitial.set(k, new Set()); byInitial.get(k).add(c); }
-  const clashes = [...byInitial.values()].filter((s) => s.size > 1).map((s) => [...s].join(" / "));
-  if (clashes.length) throw new Error(`These colours share a first letter and would get the same player codes: ${clashes.join("; ")}. Rename one (e.g. "Black" → "Dark").`);
+  const existing = state.tryout?.players || [];
+  const check = (pick, what) => {
+    const colours = new Set([...existing.map(pick), ...newPlayers.map(pick)].filter(Boolean));
+    const byInitial = new Map();
+    for (const c of colours) { const k = c.charAt(0).toUpperCase(); if (!byInitial.has(k)) byInitial.set(k, new Set()); byInitial.get(k).add(c); }
+    const clashes = [...byInitial.values()].filter((s) => s.size > 1).map((s) => [...s].join(" / "));
+    if (clashes.length) throw new Error(`These ${what} colours share a first letter and would give players the same code: ${clashes.join("; ")}. Rename one (e.g. "Black" → "Dark").`);
+  };
+  check((p) => p.colour, "primary");
+  check((p) => p.colour2, "secondary");
+  // Same number + same secondary colour on two players would collide in a secondary-jersey session.
+  const merged = [...existing.filter((e) => !newPlayers.some((n) => n.colour === e.colour && n.number === e.number)), ...newPlayers.map((n) => ({ ...n, active: true }))];
+  const dups = jerseyClashes({ jersey: "secondary" }, merged);
+  if (dups.length) throw new Error(`These codes would appear twice in a secondary-jersey session: ${dups.join(", ")}. Give one of the players a different secondary colour.`);
 }
 
 async function upsertPlayers(players) {
   checkColourInitials(players);
   for (let i = 0; i < players.length; i += 25) {
     await gql(`mutation($tryoutId: ID!, $players: [PlayerInput!]!) { upsertPlayers(tryoutId: $tryoutId, players: $players) { playerNumber } }`,
-      { tryoutId: state.tryout.id, players: players.slice(i, i + 25) });
+      { tryoutId: state.tryout.id, players: players.slice(i, i + 25).map((p) => ({ colour: p.colour, colour2: p.colour2 || null, number: p.number, position: p.position })) });
   }
 }
 
@@ -280,7 +333,7 @@ $("playersCsvForm").addEventListener("submit", async (ev) => {
 
 $("playerForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
-  const p = { colour: $("pColour").value.trim(), number: Number($("pNumber").value), position: $("pPosition").value };
+  const p = { colour: $("pColour").value.trim(), colour2: $("pColour2").value.trim() || null, number: Number($("pNumber").value), position: $("pPosition").value };
   await run(async () => { await upsertPlayers([p]); $("pNumber").value = ""; await loadAll(); }, "Player added.");
 });
 
@@ -423,15 +476,15 @@ function renderEvaluatorsTab() {
   const head = $("vHead"), body = $("vBody"); head.innerHTML = ""; body.innerHTML = "";
   $("vTitle").textContent = state.view.evaluatorId ? `Scores by ${evaluatorName(state.view.evaluatorId)}` : "Scores";
   const pm = playerMap(), sm = sessionMap();
-  const cols = ["Player", "Pos", "Session", ...CRITERIA.map((c) => c.label), "Overall", "Tier", "Notes"];
-  head.append(el("tr", {}, ...cols.map((c, i) => el("th", { class: i >= 3 && i < cols.length - 2 ? "num" : "" }, c))));
+  const cols = ["Player", "Worn as", "Pos", "Session", ...CRITERIA.map((c) => c.label), "Overall", "Tier", "Notes"];
+  head.append(el("tr", {}, ...cols.map((c, i) => el("th", { class: i >= 4 && i < cols.length - 2 ? "num" : "" }, c))));
   const mine = state.evals.filter((e) => e.evaluatorId === state.view.evaluatorId && (state.view.sessionId === "all" || e.sessionId === state.view.sessionId))
     .sort((a, b) => a.playerNumber.localeCompare(b.playerNumber) || a.sessionId.localeCompare(b.sessionId));
   for (const e of mine) {
     const p = pm.get(e.playerNumber);
     const overall = p ? weightedScore(p.position, e.scores, { equalWeights: state.rank.equalWeights }) : null;
     body.append(el("tr", {},
-      el("td", {}, el("b", {}, e.playerNumber)), el("td", {}, p?.position || ""), el("td", {}, sm.get(e.sessionId)?.label || e.sessionId),
+      el("td", {}, el("b", {}, e.playerNumber)), el("td", {}, p ? wornCode(sm.get(e.sessionId), p) : ""), el("td", {}, p?.position || ""), el("td", {}, sm.get(e.sessionId)?.label || e.sessionId),
       ...CRITERIA.map((c) => el("td", { class: "num" }, e.scores[c.key] ?? (p && criteriaFor(p.position).some((x) => x.key === c.key) ? "" : "–"))),
       el("td", { class: "num" }, fmt(overall)), el("td", {}, e.tier || ""), el("td", { style: "white-space:normal;min-width:200px" }, e.notes || "")));
   }
@@ -465,11 +518,11 @@ function rankingsCsv() {
 
 function rawCsv() {
   const pm = playerMap(), sm = sessionMap();
-  const header = ["player_number", "position", "session", "session_date", "evaluator", ...CRITERIA.map((c) => c.key), "overall", "tier", "notes", "updated_at"];
+  const header = ["player_number", "worn_as", "position", "session", "session_date", "evaluator", ...CRITERIA.map((c) => c.key), "overall", "tier", "notes", "updated_at"];
   const data = [...state.evals].sort((a, b) => a.playerNumber.localeCompare(b.playerNumber) || a.sessionId.localeCompare(b.sessionId) || a.evaluatorId.localeCompare(b.evaluatorId))
     .map((e) => {
       const p = pm.get(e.playerNumber), s = sm.get(e.sessionId);
-      return [e.playerNumber, p?.position || "", s?.label || e.sessionId, s?.date || "", evaluatorName(e.evaluatorId),
+      return [e.playerNumber, p ? wornCode(s, p) : "", p?.position || "", s?.label || e.sessionId, s?.date || "", evaluatorName(e.evaluatorId),
         ...CRITERIA.map((c) => e.scores[c.key] ?? ""), fmt(p ? weightedScore(p.position, e.scores) : null, 3), e.tier || "", (e.notes || "").slice(0, NOTES_MAX), e.updatedAt];
     });
   return { name: `evaluations-${slug(state.tryout.name)}-${today()}.csv`, text: csv([header, ...data]) };

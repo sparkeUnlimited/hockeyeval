@@ -1,7 +1,7 @@
 // Step 1: count the tryout's existing sessions so the new one gets order = count + 1.
 // (order is a GraphQL Int, so it must stay small; never store a timestamp here.)
 import { util } from "@aws-appsync/utils";
-import { tryoutPK, requireAdmin, requireId, requireText, requireDate, requireSessionType, failOnError } from "./shared.js";
+import { tryoutPK, requireAdmin, requireId, requireText, requireDate, requireSessionType, requireJersey, failOnError } from "./shared.js";
 
 export function request(ctx) {
   requireAdmin(ctx);
@@ -9,6 +9,7 @@ export function request(ctx) {
   requireText(ctx.args.label, "label", 60);
   requireDate(ctx.args.date);
   requireSessionType(ctx.args.type);
+  requireJersey(ctx.args.jersey);
   return {
     operation: "Query",
     query: {

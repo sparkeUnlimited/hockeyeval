@@ -194,6 +194,7 @@ export class TryoutStack extends cdk.Stack {
     ]);
     unit("Mutation", "createTryout", tableDs, "Mutation.createTryout.js");
     pipeline("Mutation", "addSession", [fn("CountSessions", tableDs, "Mutation.addSession.1.count.js"), fn("PutSession", tableDs, "Mutation.addSession.2.put.js")]);
+    unit("Mutation", "updateSession", tableDs, "Mutation.updateSession.js");
     unit("Mutation", "upsertPlayers", tableDs, "Mutation.upsertPlayers.js");
     unit("Mutation", "setPlayerActive", tableDs, "Mutation.setPlayerActive.js");
     unit("Mutation", "setEvaluatorAccess", tableDs, "Mutation.setEvaluatorAccess.js");
