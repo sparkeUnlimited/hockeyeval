@@ -236,15 +236,15 @@ export function registerServiceWorker() {
 // ----------------------------------------------------------------------------- Queries used by both screens
 export const Q_CURRENT_TRYOUT = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order jersey }
-  players { playerNumber colour colour2 number position active }
+  sessions { id label date type order jersey absent }
+  players { playerNumber colour colour2 number position active tag }
 } }`;
 
 /** Admin variant: also lists who may score this tryout (admin-only field). */
 export const Q_CURRENT_TRYOUT_ADMIN = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order jersey }
-  players { playerNumber colour colour2 number position active }
+  sessions { id label date type order jersey absent }
+  players { playerNumber colour colour2 number position active tag }
   evaluatorAccess { evaluatorId enabled updatedAt }
 } }`;
 
@@ -282,6 +282,11 @@ export async function fetchAllEvaluations(tryoutId, sessionId = null) {
     nextToken = data.allEvaluations.nextToken;
   } while (nextToken);
   return out;
+}
+
+/** True when the player is marked absent for the session. */
+export function isAbsent(session, player) {
+  return !!session && Array.isArray(session.absent) && session.absent.includes(player.playerNumber);
 }
 
 /** Jersey colour a player wears in a session: the secondary colour when the session says so and one is set. */

@@ -62,6 +62,18 @@ with the button on their row, as long as nobody has scored them yet; after that 
 them instead. Number and primary colour cannot be edited because they are the player's identity for the whole
 tryout: delete and re-add if one is wrong.
 
+**Players still in the running for AA.** Some players are injured during the spring AA tryouts and come out to
+only some of your sessions. Tick **AA** on their row in the Players table. Evaluators see a small AA badge on that
+player's card and on the scoring sheet, the same as the note on the paper sheets today, and the Rankings tab has an
+*AA only* filter so you can look at them as a group.
+
+**Attendance.** Under *Attendance*, pick the session and untick anyone who is not on the ice. An absent player
+disappears from every evaluator's screen for that session only, cannot be scored for it (the app refuses, even if
+someone tries), and does not count in the "scored" total at the bottom of the evaluators' screens. Rankings show a
+*Sessions* column (attended over total) so you can tell "was there twice and scored well" from "was there five
+times". A player's overall is the average of the evaluations they actually received, so missing sessions never
+lowers their number; it just gives you fewer data points, which is what the Sessions and Evals columns are for.
+
 If a player withdraws or is released between skates, click
 *Release* next to their number; they disappear from the evaluators' screens and from rankings but their scores
 are kept. *Reinstate* brings them back.

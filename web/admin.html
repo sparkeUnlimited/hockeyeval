@@ -87,8 +87,18 @@
         </form>
       </div>
       <div class="toolbar" style="margin-top:.75rem"><label><input id="showInactive" type="checkbox"> Show released players</label><span id="playerCount" class="muted small"></span></div>
-      <p class="small muted">Position and secondary colour can be changed in the table (they save immediately). <b>Delete</b> only works for players with no scores yet; use <b>Release</b> once scoring has started.</p>
-      <div class="table-wrap"><table><thead><tr><th>Player</th><th>Primary</th><th>Secondary</th><th class="num">No.</th><th>Pos</th><th>Status</th><th></th></tr></thead><tbody id="playersBody"></tbody></table></div>
+      <p class="small muted">Position and secondary colour can be changed in the table (they save immediately). <b>Delete</b> only works for players with no scores yet; use <b>Release</b> once scoring has started. Tick <b>AA</b> for players still being considered for the AA team: evaluators see the badge on that player's card.</p>
+      <div class="table-wrap"><table><thead><tr><th>Player</th><th>Primary</th><th>Secondary</th><th class="num">No.</th><th>Pos</th><th>AA</th><th>Status</th><th></th></tr></thead><tbody id="playersBody"></tbody></table></div>
+    </div>
+
+    <div class="card" id="attendanceCard">
+      <h2>Attendance</h2>
+      <p class="small muted">Untick anyone who is not on the ice for a session (injured players still being considered for AA, a player away sick). They disappear from the evaluators' screens for that session only, cannot be scored for it, and their rankings are based on the sessions they did attend.</p>
+      <div class="toolbar">
+        <label>Session <select id="aSession"></select></label>
+        <span id="aSummary" class="muted small"></span>
+      </div>
+      <div id="attendGrid" class="attend"></div>
     </div>
 
     <div class="card" id="evaluatorsCard">
@@ -111,6 +121,7 @@
       <label>Position <select id="rPosition"><option value="all">All</option><option>F</option><option>D</option><option>G</option></select></label>
       <label><input id="rEqual" type="checkbox"> Equal weights</label>
       <label><input id="rNormalize" type="checkbox"> Normalise evaluators (z-score)</label>
+      <label><input id="rTagged" type="checkbox"> AA only</label>
       <span id="rSummary" class="muted small"></span>
     </div>
     <p class="small muted">Overall = weighted average of the criteria that were scored, averaged across evaluations. Spread = standard deviation of each evaluator's overall for that player; rows at or above <span id="spreadThreshold"></span> are highlighted as disagreement worth a second look. Tap a column heading to sort.</p>

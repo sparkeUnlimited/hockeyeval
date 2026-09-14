@@ -3,7 +3,7 @@ import { requireAuth, signOut, store } from "./auth.js";
 import {
   gql, enqueueEvaluation, subscribe, flush, startSyncLoop, setCurrentUser, onSynced, retryFailed, failedEntries,
   registerServiceWorker, NetworkError, AuthError, Q_CURRENT_TRYOUT, Q_MY_EVALS, normalizeTryout, parseScores, swatchColour,
-  wornColour, wornCode,
+  wornColour, wornCode, isAbsent,
 } from "./api.js";
 import { SCALE, TIERS, criteriaFor, NOTES_MAX } from "./criteria.js";
 
@@ -55,7 +55,8 @@ const codeOf = (p) => wornCode(currentSession(), p);
 const canEvaluate = () => state.tryout?.canEvaluate === true;
 /** Scoring is blocked when the tryout is closed or the caller is not an enabled evaluator on it. */
 const isReadOnly = () => isClosed() || !canEvaluate();
-const activePlayers = () => (state.tryout?.players || []).filter((p) => p.active);
+// Players who are active AND not marked absent for the selected session: a missed skate never counts.
+const activePlayers = () => (state.tryout?.players || []).filter((p) => p.active && !isAbsent(currentSession(), p));
 const hasContent = (e) => !!e && (Object.keys(e.scores || {}).length > 0 || !!e.tier || !!(e.notes && e.notes.trim()));
 
 // ----------------------------------------------------------------------------- Loading
@@ -196,6 +197,7 @@ function renderGrid() {
     );
     if (done) btn.append(el("span", { class: "check", "aria-hidden": "true" }, "✓"));
     if (e?.tier) btn.append(el("span", { class: "tier" }, e.tier));
+    if (p.tag) btn.append(el("span", { class: "tag", title: p.tag === "AA" ? "Still being considered for the AA team" : p.tag }, p.tag));
     grid.append(btn);
   }
 }
@@ -203,7 +205,8 @@ function renderGrid() {
 function renderProgress() {
   const all = activePlayers();
   const scored = all.filter((p) => hasContent(state.evals[p.playerNumber])).length;
-  $("progressText").textContent = `${scored} of ${all.length} scored this session`;
+  const absent = (state.tryout?.players || []).filter((p) => p.active && isAbsent(currentSession(), p)).length;
+  $("progressText").textContent = `${scored} of ${all.length} scored this session${absent ? ` · ${absent} absent` : ""}`;
   $("progressBar").style.width = all.length ? `${(scored / all.length) * 100}%` : "0";
 }
 
@@ -218,6 +221,8 @@ function openSheet(playerNumber) {
   $("sheetSw").style.background = swatchColour(colourOf(p));
   $("sheetNum").textContent = codeOf(p);
   $("sheetPos").textContent = `· ${p.position}`;
+  const tagEl = $("sheetTag");
+  tagEl.hidden = !p.tag; tagEl.textContent = p.tag || "";
   // When this session uses the secondary jersey, remind the evaluator of the player's usual code.
   const alt = $("sheetAlt");
   alt.hidden = codeOf(p) === p.playerNumber;

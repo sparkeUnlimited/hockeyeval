@@ -1,7 +1,7 @@
 import { util } from "@aws-appsync/utils";
-import { tryoutPK, playerSK, requireAdmin, requireId, requirePlayerNumber, requirePosition, optionalColour, toPlayer, failOnError } from "./shared.js";
+import { tryoutPK, playerSK, requireAdmin, requireId, requirePlayerNumber, requirePosition, optionalColour, optionalTag, toPlayer, failOnError } from "./shared.js";
 
-// Partial update: position and/or secondary colour. Pass colour2 = "" to clear it.
+// Partial update: position, secondary colour and/or tag. Pass colour2 = "" or tag = "" to clear.
 export function request(ctx) {
   requireAdmin(ctx);
   const tryoutId = requireId(ctx.args.tryoutId, "tryoutId");
@@ -14,6 +14,9 @@ export function request(ctx) {
   }
   if (ctx.args.colour2 !== null && ctx.args.colour2 !== undefined) {
     sets.push("#colour2 = :colour2"); names["#colour2"] = "colour2"; values[":colour2"] = optionalColour(ctx.args.colour2);
+  }
+  if (ctx.args.tag !== null && ctx.args.tag !== undefined) {
+    sets.push("#tag = :tag"); names["#tag"] = "tag"; values[":tag"] = optionalTag(ctx.args.tag);
   }
   if (sets.length === 0) util.error("Nothing to update", "BadRequest");
   return {

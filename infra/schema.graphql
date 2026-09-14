@@ -35,6 +35,7 @@ type Session {
   type: String!            # skills | scrimmage | game
   order: Int!
   jersey: String!          # primary | secondary: which of the player's two jersey colours is worn this session
+  absent: [ID!]!           # playerNumbers marked absent for this session (hidden from evaluators, writes rejected)
 }
 
 # A player's number never changes. Every player gets two jersey colours at registration; the
@@ -46,6 +47,7 @@ type Player {
   number: Int!
   position: String!        # F | D | G
   active: Boolean!
+  tag: String              # short admin label shown to evaluators, e.g. "AA" (still considered for the AA team)
 }
 
 type Evaluation {
@@ -76,6 +78,7 @@ input PlayerInput {
   number: Int!
   position: String!
   active: Boolean
+  tag: String
 }
 
 type Query {
@@ -117,7 +120,11 @@ type Mutation {
     @aws_auth(cognito_groups: ["admin"])
   # Change a player's position and/or secondary colour. Number and primary colour are the identity: to change
   # those, delete the player and add them again.
-  updatePlayer(tryoutId: ID!, playerNumber: ID!, position: String, colour2: String): Player!
+  updatePlayer(tryoutId: ID!, playerNumber: ID!, position: String, colour2: String, tag: String): Player!
+    @aws_auth(cognito_groups: ["admin"])
+  # Mark a player present/absent for one session. Absent players are hidden from evaluators for that session
+  # and any score for them in that session is rejected, so a missed skate never counts as an evaluation.
+  setAttendance(tryoutId: ID!, sessionId: ID!, playerNumber: ID!, present: Boolean!): Session!
     @aws_auth(cognito_groups: ["admin"])
   # Remove a player that has no scores yet (wrong number, entered twice). Players with scores must be released.
   deletePlayer(tryoutId: ID!, playerNumber: ID!): ID! @aws_auth(cognito_groups: ["admin"])

@@ -1,7 +1,7 @@
 // Convenor dashboard: setup, rankings, per-evaluator view, CSV export, close.
 // Everything here is by player number only. There is no name field anywhere and no place to type one.
 import { requireAuth, signOut } from "./auth.js";
-import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, AuthError } from "./api.js";
+import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, isAbsent, AuthError } from "./api.js";
 import { CRITERIA, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
 registerServiceWorker();
@@ -26,7 +26,8 @@ const state = {
   tryout: null,
   evals: [],
   evaluators: [],
-  rank: { sessionId: "all", position: "all", equalWeights: false, normalize: false, sortKey: "overall", sortDir: "desc" },
+  rank: { sessionId: "all", position: "all", equalWeights: false, normalize: false, taggedOnly: false, sortKey: "overall", sortDir: "desc" },
+  attendSessionId: null,
   view: { evaluatorId: null, sessionId: "all" },
   showInactive: false,
 };
@@ -98,10 +99,11 @@ function evaluatorStats(equalWeights) {
 
 /** Rankings rows for the current filters. */
 function computeRankings() {
-  const { sessionId, position, equalWeights, normalize } = state.rank;
+  const { sessionId, position, equalWeights, normalize, taggedOnly } = state.rank;
   const pm = playerMap();
   const stats = evaluatorStats(equalWeights);
-  const players = (state.tryout?.players || []).filter((p) => p.active && (position === "all" || p.position === position));
+  const sessions = state.tryout?.sessions || [];
+  const players = (state.tryout?.players || []).filter((p) => p.active && (position === "all" || p.position === position) && (!taggedOnly || p.tag));
   const rows = [];
   for (const p of players) {
     const evs = state.evals.filter((e) => e.playerNumber === p.playerNumber && (sessionId === "all" || e.sessionId === sessionId));
@@ -133,9 +135,11 @@ function computeRankings() {
     const crit = {};
     for (const c of criteriaFor(p.position)) crit[c.key] = critSums[c.key] ? critSums[c.key].sum / critSums[c.key].n : null;
     const perEvalMeans = [...perEvaluator.values()].map(mean);
+    const attended = sessions.filter((s) => !isAbsent(s, p)).length;
     rows.push({
-      playerNumber: p.playerNumber, colour: p.colour, number: p.number, position: p.position,
+      playerNumber: p.playerNumber, colour: p.colour, number: p.number, position: p.position, tag: p.tag || null,
       n, crit, overall: mean(overalls), tiers, spread: stddev(perEvalMeans), evaluators: perEvaluator.size,
+      attended, sessionsTotal: sessions.length,
     });
   }
   return { rows, stats };
@@ -200,18 +204,24 @@ function renderSetup() {
       ...["F", "D", "G"].map((x) => el("option", { value: x, selected: x === p.position }, x)));
     posSel.addEventListener("change", () => updatePlayer(p, { position: posSel.value }));
 
+    const tagBox = el("input", { type: "checkbox", "aria-label": `AA candidate ${p.playerNumber}` });
+    tagBox.checked = p.tag === "AA";
+    tagBox.addEventListener("change", () => updatePlayer(p, { tag: tagBox.checked ? "AA" : "" }));
+
     pb.append(el("tr", { class: p.active ? "" : "inactive", "data-player": p.playerNumber },
-      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber)),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", style: "margin-left:.4rem" }, p.tag) : null),
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), p.colour),
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour2 || "")}` }), c2Sel, c2Other),
       el("td", { class: "num" }, String(p.number)), el("td", {}, posSel),
+      el("td", {}, tagBox),
       el("td", {}, el("span", { class: `pill ${p.active ? "ok" : "bad"}` }, p.active ? "active" : "released")),
       el("td", {}, el("div", { class: "row", style: "flex-wrap:nowrap" },
         el("button", { class: "btn sm", type: "button", onclick: () => setActive(p, !p.active) }, p.active ? "Release" : "Reinstate"),
         el("button", { class: "btn sm danger", type: "button", onclick: () => deletePlayer(p) }, "Delete"))),
     ));
   }
-  if (!players.length) pb.append(el("tr", {}, el("td", { colspan: 7, class: "muted" }, "No players yet.")));
+  if (!players.length) pb.append(el("tr", {}, el("td", { colspan: 8, class: "muted" }, "No players yet.")));
+  renderAttendance();
 
   const eb = $("evaluatorsBody"); eb.innerHTML = "";
   const access = new Map((t.evaluatorAccess || []).map((a) => [a.evaluatorId, a]));
@@ -402,9 +412,9 @@ async function updatePlayer(p, patch) {
     if (dups.length) { msg(`That would make two players show as ${dups.join(", ")} in secondary-jersey sessions.`, "bad"); renderSetup(); return; }
   }
   await run(async () => {
-    const data = await gql(`mutation($tryoutId: ID!, $playerNumber: ID!, $position: String, $colour2: String) {
-      updatePlayer(tryoutId: $tryoutId, playerNumber: $playerNumber, position: $position, colour2: $colour2) { playerNumber position colour2 } }`,
-      { tryoutId: state.tryout.id, playerNumber: p.playerNumber, position: patch.position ?? null, colour2: patch.colour2 ?? null });
+    const data = await gql(`mutation($tryoutId: ID!, $playerNumber: ID!, $position: String, $colour2: String, $tag: String) {
+      updatePlayer(tryoutId: $tryoutId, playerNumber: $playerNumber, position: $position, colour2: $colour2, tag: $tag) { playerNumber position colour2 tag } }`,
+      { tryoutId: state.tryout.id, playerNumber: p.playerNumber, position: patch.position ?? null, colour2: patch.colour2 ?? null, tag: patch.tag ?? null });
     Object.assign(p, data.updatePlayer);
     renderAll();
   }, `${p.playerNumber} updated.`);
@@ -418,6 +428,45 @@ async function deletePlayer(p) {
     state.tryout.players = state.tryout.players.filter((x) => x.playerNumber !== p.playerNumber);
     renderAll();
   }, `${p.playerNumber} deleted.`);
+}
+
+function renderAttendance() {
+  const t = state.tryout;
+  const card = $("attendanceCard");
+  card.hidden = !t;
+  if (!t) return;
+  const sel = $("aSession");
+  const wanted = state.attendSessionId || sel.value;
+  sel.innerHTML = "";
+  for (const s of t.sessions) sel.append(el("option", { value: s.id }, `${s.label} · ${s.date}`));
+  sel.value = t.sessions.some((s) => s.id === wanted) ? wanted : (t.sessions[0]?.id || "");
+  state.attendSessionId = sel.value || null;
+  const session = t.sessions.find((s) => s.id === state.attendSessionId) || null;
+  const grid = $("attendGrid"); grid.innerHTML = "";
+  if (!session) { $("aSummary").textContent = "Add a session first."; return; }
+  const players = t.players.filter((p) => p.active);
+  let absent = 0;
+  for (const p of players) {
+    const away = isAbsent(session, p);
+    if (away) absent += 1;
+    const box = el("input", { type: "checkbox", "aria-label": `${p.playerNumber} present` });
+    box.checked = !away;
+    box.addEventListener("change", () => setAttendance(session, p, box.checked));
+    grid.append(el("label", { class: away ? "absent" : "", "data-attend": p.playerNumber }, box,
+      el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), wornCode(session, p), p.tag ? el("span", { class: "tagpill" }, p.tag) : null));
+  }
+  $("aSummary").textContent = `${players.length - absent} present · ${absent} absent`;
+}
+$("aSession").addEventListener("change", (ev) => { state.attendSessionId = ev.target.value; renderAttendance(); });
+
+async function setAttendance(session, p, present) {
+  await run(async () => {
+    const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $playerNumber: ID!, $present: Boolean!) {
+      setAttendance(tryoutId: $tryoutId, sessionId: $sessionId, playerNumber: $playerNumber, present: $present) { id absent } }`,
+      { tryoutId: state.tryout.id, sessionId: session.id, playerNumber: p.playerNumber, present });
+    session.absent = data.setAttendance.absent;
+    renderAttendance(); renderRankings();
+  }, `${p.playerNumber} marked ${present ? "present" : "absent"} for ${session.label}.`);
 }
 
 async function setActive(p, active) {
@@ -461,6 +510,7 @@ function rankColumns(position) {
   return [
     { key: "playerNumber", label: "Player", num: false },
     { key: "position", label: "Pos", num: false },
+    { key: "attended", label: "Sessions", num: true },
     { key: "n", label: "Evals", num: true },
     { key: "overall", label: "Overall", num: true },
     { key: "spread", label: "Spread", num: true },
@@ -501,7 +551,8 @@ function renderRankings() {
     for (const c of cols) {
       let v = getPath(r, c.key);
       let text;
-      if (c.key === "playerNumber") { row.append(el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(r.colour)}` }), el("b", {}, r.playerNumber))); continue; }
+      if (c.key === "playerNumber") { row.append(el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(r.colour)}` }), el("b", {}, r.playerNumber), r.tag ? el("span", { class: "tagpill", style: "margin-left:.4rem" }, r.tag) : null)); continue; }
+      if (c.key === "attended") { row.append(el("td", { class: "num" }, `${r.attended}/${r.sessionsTotal}`)); continue; }
       if (c.crit) text = criteriaFor(r.position).some((x) => x.key === c.crit) ? fmt(v) : "–";
       else if (c.key === "overall" || c.key === "spread") text = fmt(v);
       else text = v == null ? "" : String(v);
@@ -519,6 +570,7 @@ for (const [id, key] of [["rSession", "sessionId"], ["rPosition", "position"]]) 
 }
 $("rEqual").addEventListener("change", (ev) => { state.rank.equalWeights = ev.target.checked; renderRankings(); renderEvaluatorsTab(); });
 $("rNormalize").addEventListener("change", (ev) => { state.rank.normalize = ev.target.checked; renderRankings(); });
+$("rTagged").addEventListener("change", (ev) => { state.rank.taggedOnly = ev.target.checked; renderRankings(); });
 
 // ----------------------------------------------------------------------------- By evaluator
 function renderEvaluatorsTab() {
@@ -586,10 +638,10 @@ const today = () => new Date().toISOString().slice(0, 10);
 function rankingsCsv() {
   const { rows } = computeRankings();
   const crits = state.rank.position === "all" ? CRITERIA : criteriaFor(state.rank.position);
-  const header = ["player_number", "colour", "number", "position", "evaluations", "evaluators",
+  const header = ["player_number", "colour", "number", "position", "tag", "sessions_attended", "sessions_total", "evaluations", "evaluators",
     ...crits.map((c) => `avg_${c.key}`), "overall", "tier_A", "tier_B", "tier_C", "tier_X", "spread"];
   const sorted = sortRows(rows, state.rank.sortKey, state.rank.sortDir);
-  const data = sorted.map((r) => [r.playerNumber, r.colour, r.number, r.position, r.n, r.evaluators,
+  const data = sorted.map((r) => [r.playerNumber, r.colour, r.number, r.position, r.tag || "", r.attended, r.sessionsTotal, r.n, r.evaluators,
     ...crits.map((c) => (r.crit[c.key] === null || r.crit[c.key] === undefined ? "" : fmt(r.crit[c.key], 3))),
     fmt(r.overall, 3), r.tiers.A, r.tiers.B, r.tiers.C, r.tiers.X, fmt(r.spread, 3)]);
   const meta = [`# ${state.tryout.name}`, `session=${state.rank.sessionId}`, `position=${state.rank.position}`,
@@ -599,11 +651,11 @@ function rankingsCsv() {
 
 function rawCsv() {
   const pm = playerMap(), sm = sessionMap();
-  const header = ["player_number", "worn_as", "position", "session", "session_date", "evaluator", ...CRITERIA.map((c) => c.key), "overall", "tier", "notes", "updated_at"];
+  const header = ["player_number", "worn_as", "position", "tag", "session", "session_date", "evaluator", ...CRITERIA.map((c) => c.key), "overall", "tier", "notes", "updated_at"];
   const data = [...state.evals].sort((a, b) => a.playerNumber.localeCompare(b.playerNumber) || a.sessionId.localeCompare(b.sessionId) || a.evaluatorId.localeCompare(b.evaluatorId))
     .map((e) => {
       const p = pm.get(e.playerNumber), s = sm.get(e.sessionId);
-      return [e.playerNumber, p ? wornCode(s, p) : "", p?.position || "", s?.label || e.sessionId, s?.date || "", evaluatorName(e.evaluatorId),
+      return [e.playerNumber, p ? wornCode(s, p) : "", p?.position || "", p?.tag || "", s?.label || e.sessionId, s?.date || "", evaluatorName(e.evaluatorId),
         ...CRITERIA.map((c) => e.scores[c.key] ?? ""), fmt(p ? weightedScore(p.position, e.scores) : null, 3), e.tier || "", (e.notes || "").slice(0, NOTES_MAX), e.updatedAt];
     });
   return { name: `evaluations-${slug(state.tryout.name)}-${today()}.csv`, text: csv([header, ...data]) };

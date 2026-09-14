@@ -36,7 +36,7 @@ export const util = {
   unauthorized() { throw new AppSyncError("Unauthorized", "Unauthorized"); },
   appendError() {},
   matches(pattern, value) { return new RegExp(pattern).test(value); },
-  dynamodb: { toMapValues, toDynamoDB: toAttr },
+  dynamodb: { toMapValues, toDynamoDB: toAttr, toStringSet: (arr) => ({ SS: [...arr] }) },
   time: {
     nowISO8601: () => new Date().toISOString(),
     nowEpochMilliSeconds: () => Date.now(),
@@ -60,6 +60,7 @@ function fromAttr(a) {
   if ("BOOL" in a) return a.BOOL;
   if ("NULL" in a) return null;
   if ("L" in a) return a.L.map(fromAttr);
+  if ("SS" in a) return [...a.SS];
   if ("M" in a) return fromMapValues(a.M);
   return undefined;
 }

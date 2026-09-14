@@ -64,6 +64,16 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
     assert.equal(c.stash.position, "D");
   });
 
+  test("a player marked absent for the session cannot be scored in it", () => {
+    const r = rows("open");
+    r.data.TryoutTable[1].absent = ["B-07", "W-14"];
+    throwsType(() => mod.response(ctx({ args, result: r })), "Absent", /absent/i);
+    r.data.TryoutTable[1].absent = ["B-07"];
+    const c = ctx({ args, result: r });
+    mod.response(c);
+    assert.equal(c.stash.position, "D", "absent list for other players does not block");
+  });
+
   test("closed tryout is rejected", () => {
     throwsType(() => mod.response(ctx({ args, result: rows("closed") })), "TryoutClosed", /closed/i);
   });
@@ -221,6 +231,7 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.updateSession.js", { tryoutId: TRYOUT, sessionId: SESSION, jersey: "secondary" }],
       ["Mutation.setPlayerActive.js", { tryoutId: TRYOUT, playerNumber: "W-14", active: false }],
       ["Mutation.updatePlayer.js", { tryoutId: TRYOUT, playerNumber: "W-14", position: "D" }],
+      ["Mutation.setAttendance.js", { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: false }],
       ["Mutation.deletePlayer.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.deletePlayer.2.delete.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],
@@ -444,6 +455,37 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     assert.deepEqual(fromMapValues(clear.update.expressionValues), { ":colour2": null });
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", position: "C" } })), "BadRequest", /position/);
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14" } })), "BadRequest", /Nothing/);
+  });
+
+  test("setAttendance adds to / removes from the session's absent string set", async () => {
+    const mod = await loadResolver("Mutation.setAttendance.js");
+    const absent = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: false } }));
+    assert.equal(absent.operation, "UpdateItem");
+    assert.equal(absent.update.expression, "ADD #absent :p");
+    assert.deepEqual(absent.update.expressionValues[":p"], { SS: ["W-14"] });
+    assert.deepEqual(fromMapValues(absent.key), { PK: `TRYOUT#${TRYOUT}`, SK: `SESSION#${SESSION}` });
+    const present = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: true } }));
+    assert.equal(present.update.expression, "DELETE #absent :p");
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "Smith-14", present: false } })), "BadRequest", /playerNumber/);
+    const out = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "skills", order: 1, absent: ["W-14"] } }));
+    assert.deepEqual(out.absent, ["W-14"]);
+    const none = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "skills", order: 1 } }));
+    assert.deepEqual(none.absent, [], "absent defaults to an empty list");
+  });
+
+  test("player tag: short, upper-cased, never free text long enough for a name", async () => {
+    const upd = await loadResolver("Mutation.updatePlayer.js");
+    const req = upd.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", tag: " aa " } }));
+    assert.deepEqual(fromMapValues(req.update.expressionValues), { ":tag": "AA" });
+    const clear = upd.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", tag: "" } }));
+    assert.deepEqual(fromMapValues(clear.update.expressionValues), { ":tag": null });
+    throwsType(() => upd.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", tag: "John Smith AA" } })), "BadRequest", /tag/);
+    throwsType(() => upd.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", tag: "A.A" } })), "BadRequest", /tag/);
+    const ups = await loadResolver("Mutation.upsertPlayers.js");
+    const put = ups.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, players: [{ colour: "White", number: 7, position: "F", tag: "aa" }, { colour: "White", number: 8, position: "F" }] } }));
+    const items = put.tables.TryoutTable.map(fromMapValues);
+    assert.equal(items[0].tag, "AA");
+    assert.equal(items[1].tag, null);
   });
 
   test("deletePlayer refuses when the player has scores, otherwise deletes the row", async () => {

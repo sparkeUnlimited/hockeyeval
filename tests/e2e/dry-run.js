@@ -144,6 +144,15 @@ try {
   assert((await admin.locator("#playersBody tr").count()) === 12, "back to 12 players after delete");
   log("position edited, secondary colour edited, player added with default colours and deleted");
 
+  // Tag W-09 as AA and mark W-12 absent for session 1
+  await admin.locator('#playersBody tr[data-player="W-09"] input[type=checkbox]').check();
+  await admin.locator("#msg", { hasText: "W-09 updated" }).waitFor({ timeout: 20000 });
+  await admin.selectOption("#aSession", { index: 0 });
+  await admin.locator('#attendGrid label[data-attend="W-12"] input').uncheck();
+  await admin.locator("#msg", { hasText: "W-12 marked absent" }).waitFor({ timeout: 20000 });
+  assert(/1 absent/.test(await admin.locator("#aSummary").textContent()), "attendance summary shows 1 absent");
+  log("W-09 tagged AA; W-12 marked absent for session 1");
+
   // ------------------------------------------------------------------ Evaluator: score 6 online
   await ev.reload();
   await ev.locator("#tryoutName").filter({ hasText: TRYOUT_NAME }).waitFor({ timeout: 20000 });
@@ -152,8 +161,11 @@ try {
   assert(sessionOptions.length === 2, `expected 2 sessions in picker, saw ${sessionOptions.length}`);
   await ev.selectOption("#sessionSelect", { index: 0 });
   await ev.locator(".player").first().waitFor();
-  assert((await ev.locator(".player").count()) === 12, "evaluator should see 12 players");
-  log("evaluator signed in, sees 12 players");
+  assert((await ev.locator(".player").count()) === 11, "evaluator should see 11 players (W-12 absent)");
+  assert((await ev.locator('.player[aria-label^="W-12"]').count()) === 0, "absent player hidden in session 1");
+  assert((await ev.locator('.player[aria-label^="W-09"] .tag').textContent()) === "AA", "AA badge on the evaluator card");
+  assert(/of 11 scored/.test(await ev.locator("#progressText").textContent()) && /1 absent/.test(await ev.locator("#progressText").textContent()), "progress excludes the absent player");
+  log("evaluator signed in, sees 11 players, AA badge visible, absent player hidden");
 
   async function scorePlayer(index, value, tier) {
     const card = ev.locator(".player").nth(index);
@@ -186,6 +198,7 @@ try {
   assert(codes2.every((c) => /^[GYO]-\d\d$/.test(c)), `session 2 should show Green/Yellow/Orange codes, saw ${codes2.join(" ")}`);
   assert(codes2.includes("G-14") && codes2.includes("Y-17"), "W-14 should appear as G-14 and B-17 as Y-17");
   assert(codes2.includes("O-03"), "B-03's secondary colour edit (Orange) reaches the evaluator");
+  assert(codes2.includes("G-12"), "W-12 is present in session 2 (absence is per session)");
   await ev.locator(".player", { hasText: "14" }).first().click();
   await ev.locator("#sheet").waitFor({ state: "visible" });
   assert((await ev.locator("#sheetNum").textContent()) === "G-14", "sheet shows the worn code");
@@ -204,7 +217,7 @@ try {
   await ev.waitForTimeout(1500);
   const offlineText = await ev.locator("#syncText").textContent();
   assert(/Offline/.test(offlineText) && /3 queued/.test(offlineText), `expected "Offline · 3 queued", saw "${offlineText}"`);
-  assert(/9 of 12 scored/.test(await ev.locator("#progressText").textContent()), "progress should read 9 of 12");
+  assert(/9 of 11 scored/.test(await ev.locator("#progressText").textContent()), "progress should read 9 of 11");
   log(`offline: sync status "${offlineText}"`);
   await ev.screenshot({ path: path.join(DOCS, "screenshot-evaluator.png"), fullPage: false });
   // Also capture the scoring sheet itself
@@ -232,10 +245,15 @@ try {
   await admin.selectOption("#rSession", { index: 1 });
   const rows = admin.locator("#rankBody tr");
   await rows.first().waitFor();
-  const evaluated = await rows.evaluateAll((trs) => trs.filter((tr) => Number(tr.children[2].textContent) >= 1).length);
+  const evaluated = await rows.evaluateAll((trs) => trs.filter((tr) => Number(tr.children[3].textContent) >= 1).length);
   assert(evaluated === 9, `expected 9 evaluated players in rankings, saw ${evaluated}`);
   const total = await rows.count();
   assert(total === 12, `expected 12 rows, saw ${total}`);
+  const w12 = admin.locator('#rankBody tr', { hasText: "W-12" });
+  assert((await w12.locator("td").nth(2).textContent()) === "1/2", "W-12 attended 1 of 2 sessions");
+  await admin.check("#rTagged");
+  assert((await rows.count()) === 1 && /W-09/.test(await rows.first().textContent()), "AA-only filter shows just W-09");
+  await admin.uncheck("#rTagged");
   await admin.screenshot({ path: path.join(DOCS, "screenshot-admin-rankings.png") });
   log("admin rankings show 9 evaluated players");
 

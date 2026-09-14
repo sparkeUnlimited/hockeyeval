@@ -236,7 +236,13 @@ only thing that grows, and log groups expire after 30 days.
   `Tryout.evaluatorAccess`) gates every write, also at the owner's request.
 - Players carry an optional `colour2` and sessions a `jersey` (`primary`/`secondary`) plus an `updateSession`
   mutation, so scrimmages can be played in the second jersey set without changing player identities.
-- `updatePlayer` (position and/or secondary colour) and `deletePlayer` (refused once the player has scores; a
+- Per-session attendance: `Session.absent` (a DynamoDB string set edited with `setAttendance`). Absent players
+  are hidden from the evaluator grid for that session, `upsertEvaluation` rejects scores for them, and rankings
+  show sessions attended. Overall is an average over the evaluations received, so a missed skate never counts
+  against a player.
+- `Player.tag`: a short admin label (12 chars, letters/digits only, never free text) shown as a badge to
+  evaluators and in rankings; the UI exposes it as an "AA" checkbox for players still in AA contention.
+- `updatePlayer` (position, secondary colour and/or tag) and `deletePlayer` (refused once the player has scores; a
   two-step pipeline checks GSI1 first) support registration changes before the tryout starts.
 - The Lambda runs Node 22 (Node 20 is deprecated for new functions).
 - Comparator sorts are done on the client because the APPSYNC_JS runtime does not allow them.

@@ -45,6 +45,8 @@ export function response(ctx) {
   if (!access || access.enabled === false) util.error("You are not an enabled evaluator on this tryout", "Forbidden");
   if (!session) util.error("Session not found", "NotFound");
   if (!player) util.error("Player not found", "NotFound");
+  // A missed skate must never become an evaluation.
+  if (session.absent && session.absent.includes(player.playerNumber)) util.error("Player is marked absent for this session", "Absent");
   ctx.stash.position = player.position;
   return { position: player.position };
 }

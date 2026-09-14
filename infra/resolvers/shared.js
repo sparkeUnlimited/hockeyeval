@@ -24,6 +24,7 @@ const ID_RE = "^[A-Za-z0-9_-]{1,64}$";
 const PLAYER_NUMBER_RE = "^[A-Z]-[0-9]{2,3}$";
 const DATE_RE = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$";
 const COLOUR_RE = "^[A-Za-z]{2,20}$";
+const TAG_RE = "^[A-Za-z0-9 +-]{1,12}$";
 const SESSION_TYPES = ["skills", "scrimmage", "game"];
 const JERSEYS = ["primary", "secondary"];
 const POSITIONS = ["F", "D", "G"];
@@ -82,6 +83,15 @@ export function requireJersey(value) {
 export function optionalColour(value) {
   if (value === null || value === undefined || value === "") return null;
   return requireColour(value);
+}
+
+/** Optional short tag such as "AA". Empty clears it. Letters, digits, space, + and - only: never a name. */
+export function optionalTag(value) {
+  if (value === null || value === undefined) return null;
+  const t = value.trim();
+  if (t.length === 0) return null;
+  if (!util.matches(TAG_RE, t)) util.error("tag must be 1-12 letters, digits, spaces, + or -", "BadRequest");
+  return t.toUpperCase();
 }
 
 export function requirePosition(value) {
@@ -157,11 +167,15 @@ export function toPlayer(item) {
     number: item.number,
     position: item.position,
     active: item.active !== false,
+    tag: item.tag || null,
   };
 }
 
 export function toSession(item) {
-  return { id: item.sessionId, label: item.label, date: item.date, type: item.type, order: item.order, jersey: item.jersey || "primary" };
+  return {
+    id: item.sessionId, label: item.label, date: item.date, type: item.type, order: item.order,
+    jersey: item.jersey || "primary", absent: item.absent || [],
+  };
 }
 
 export function toEvaluatorAccess(item) {

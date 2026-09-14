@@ -35,13 +35,23 @@ function checkCondition(cond, existing) {
 function applyUpdate(item, update) {
   const values = fromMapValues(update.expressionValues || {});
   const names = update.expressionNames || {};
-  const m = update.expression.match(/^SET (.+)$/);
-  if (!m) throw new Error(`mock: unsupported update ${update.expression}`);
-  for (const clause of m[1].split(",")) {
-    const [lhs, rhs] = clause.split("=").map((s) => s.trim());
-    item[names[lhs] || lhs] = values[rhs];
+  let m = update.expression.match(/^SET (.+)$/);
+  if (m) {
+    for (const clause of m[1].split(",")) {
+      const [lhs, rhs] = clause.split("=").map((s) => s.trim());
+      item[names[lhs] || lhs] = values[rhs];
+    }
+    return item;
   }
-  return item;
+  m = update.expression.match(/^(ADD|DELETE) (\S+) (:\w+)$/); // string-set add/remove
+  if (m) {
+    const attr = names[m[2]] || m[2];
+    const set = new Set(item[attr] || []);
+    for (const v of values[m[3]]) (m[1] === "ADD" ? set.add(v) : set.delete(v));
+    if (set.size) item[attr] = [...set]; else delete item[attr];
+    return item;
+  }
+  throw new Error(`mock: unsupported update ${update.expression}`);
 }
 async function execute(req) {
   switch (req.operation) {
@@ -130,6 +140,7 @@ const FIELDS = {
   upsertPlayers: [await R("Mutation.upsertPlayers.js")],
   setPlayerActive: [await R("Mutation.setPlayerActive.js")],
   updatePlayer: [await R("Mutation.updatePlayer.js")],
+  setAttendance: [await R("Mutation.setAttendance.js")],
   deletePlayer: [await R("Mutation.deletePlayer.1.checkNoScores.js"), await R("Mutation.deletePlayer.2.delete.js")],
   setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],
   closeTryout: [await R("Mutation.closeTryout.1.close.js"), await R("Fn.getTryout.js")],
@@ -137,7 +148,7 @@ const FIELDS = {
   deleteEvaluator: [await R("Lambda.adminOps.js")],
   exportUrl: [await R("Lambda.adminOps.js")],
 };
-const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
+const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "setAttendance", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
 
 async function runField(field, args, identity) {
   const ctx = { args, arguments: args, identity, stash: {}, prev: { result: null }, result: null, error: null, info: { fieldName: field, parentTypeName: "" } };
@@ -189,10 +200,10 @@ function seed() {
   // Every player has two jersey colours; numbers never change.
   const players = [["White", "Green", 1, "G"], ["White", "Green", 4, "D"], ["White", "Green", 7, "F"], ["White", "Green", 9, "F"], ["White", "Green", 12, "D"], ["White", "Green", 14, "F"],
     ["Blue", "Yellow", 1, "G"], ["Blue", "Yellow", 3, "D"], ["Blue", "Yellow", 8, "F"], ["Blue", "Yellow", 10, "F"], ["Blue", "Yellow", 15, "D"], ["Blue", "Yellow", 17, "F"],
-    ["Red", "Orange", 2, "D"], ["Red", "Orange", 5, "F"], ["Red", "Orange", 11, "F"]];
-  for (const [colour, colour2, number, position] of players) {
+    ["Red", "Orange", 2, "D"], ["Red", "Orange", 5, "F"], ["Red", "Orange", 11, "F", "AA"]];
+  for (const [colour, colour2, number, position, tag] of players) {
     const pn = `${colour[0]}-${String(number).padStart(2, "0")}`;
-    db.set(k(`TRYOUT#${id}`, `PLAYER#${pn}`), { PK: `TRYOUT#${id}`, SK: `PLAYER#${pn}`, tryoutId: id, playerNumber: pn, colour, colour2, number, position, active: true });
+    db.set(k(`TRYOUT#${id}`, `PLAYER#${pn}`), { PK: `TRYOUT#${id}`, SK: `PLAYER#${pn}`, tryoutId: id, playerNumber: pn, colour, colour2, number, position, active: true, tag: tag || null });
   }
   for (const [email, label] of [["evaluator1@mock.test", "Evaluator 1"], ["evaluator2@mock.test", "Evaluator 2"]]) {
     const sub = subFor(email);

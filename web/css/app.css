@@ -113,6 +113,9 @@ textarea { min-height: 88px; resize: vertical; }
 .player .check { position: absolute; top: 4px; right: 6px; font-size: 1.1rem; color: var(--ok); font-weight: 900; }
 .player .tier { position: absolute; bottom: 4px; right: 6px; min-width: 24px; height: 24px; border-radius: 6px; font-size: .9rem; font-weight: 800;
   display: inline-flex; align-items: center; justify-content: center; background: var(--fg); color: var(--bg); }
+.player .tag { position: absolute; bottom: 4px; left: 6px; padding: 0 5px; height: 22px; border-radius: 6px; font-size: .8rem; font-weight: 800;
+  display: inline-flex; align-items: center; background: var(--warn); color: #000; letter-spacing: .02em; }
+.tagpill { display: inline-flex; align-items: center; padding: .1rem .5rem; border-radius: 6px; background: var(--warn); color: #000; font-size: .95rem; font-weight: 800; }
 .player.done { border-color: var(--ok); }
 .player.inactive { opacity: .45; }
 
@@ -186,6 +189,9 @@ tr.inactive td { opacity: .5; }
 .toolbar label { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; }
 .toolbar select { width: auto; min-width: 140px; }
 input[type=checkbox] { width: 24px; height: 24px; }
+.attend { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; }
+.attend label { display: flex; align-items: center; gap: .5rem; min-height: var(--tap); padding: 0 .6rem; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); font-weight: 700; }
+.attend label.absent { opacity: .55; text-decoration: line-through; }
 td select.sm, td input.sm { min-height: 40px; width: auto; min-width: 70px; padding: .3rem .5rem; }
 td .colour-select { min-width: 120px; }
 .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,.35); vertical-align: -2px; margin-right: .3rem; }
