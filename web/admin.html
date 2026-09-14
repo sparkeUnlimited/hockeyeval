@@ -92,12 +92,19 @@
     </div>
 
     <div class="card" id="attendanceCard">
-      <h2>Attendance</h2>
-      <p class="small muted">Untick anyone who is not on the ice for a session (injured players still being considered for AA, a player away sick). They disappear from the evaluators' screens for that session only, cannot be scored for it, and their rankings are based on the sessions they did attend.</p>
+      <h2>Attendance &amp; jerseys</h2>
+      <p class="small muted">For each ice time: untick anyone who is not on the ice, and set the jersey colour each player is wearing. Absent players disappear from the evaluators' screens for that session only and cannot be scored for it. Colours set here are what evaluators see for that session; the number never changes.</p>
       <div class="toolbar">
         <label>Session <select id="aSession"></select></label>
         <span id="aSummary" class="muted small"></span>
       </div>
+      <div class="toolbar" id="bulkBar">
+        <label>Set <select id="bulkWho"><option value="F">all forwards</option><option value="D">all defence</option><option value="G">all goalies</option><option value="all">everyone</option></select></label>
+        <label>to <select id="bulkColour" class="colour-select"></select><input id="bulkColourOther" type="text" maxlength="20" placeholder="New colour" hidden></label>
+        <button id="bulkApply" class="btn sm primary" type="button">Apply</button>
+        <button id="bulkReset" class="btn sm" type="button" title="Remove every per-player colour for this session and go back to the session's default jersey set">Reset to default jerseys</button>
+      </div>
+      <p id="aClash" class="error small" hidden></p>
       <div id="attendGrid" class="attend"></div>
     </div>
 

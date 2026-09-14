@@ -236,14 +236,14 @@ export function registerServiceWorker() {
 // ----------------------------------------------------------------------------- Queries used by both screens
 export const Q_CURRENT_TRYOUT = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order jersey absent }
+  sessions { id label date type order jersey absent colours }
   players { playerNumber colour colour2 number position active tag }
 } }`;
 
 /** Admin variant: also lists who may score this tryout (admin-only field). */
 export const Q_CURRENT_TRYOUT_ADMIN = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order jersey absent }
+  sessions { id label date type order jersey absent colours }
   players { playerNumber colour colour2 number position active tag }
   evaluatorAccess { evaluatorId enabled updatedAt }
 } }`;
@@ -256,6 +256,7 @@ export const Q_MY_EVALS = `query My($tryoutId: ID!, $sessionId: ID!) {
 export function normalizeTryout(t) {
   if (!t) return t;
   t.sessions = [...(t.sessions || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.order - b.order));
+  for (const s of t.sessions) s.colours = parseScores(s.colours); // AWSJSON -> object
   t.players = [...(t.players || [])].sort((a, b) => (a.colour < b.colour ? -1 : a.colour > b.colour ? 1 : a.number - b.number));
   return t;
 }
@@ -289,8 +290,14 @@ export function isAbsent(session, player) {
   return !!session && Array.isArray(session.absent) && session.absent.includes(player.playerNumber);
 }
 
-/** Jersey colour a player wears in a session: the secondary colour when the session says so and one is set. */
+/**
+ * Jersey colour a player wears in a session: the per-session assignment when the convenor set one
+ * (skills: forwards one colour, defence another; scrimmage: team colours), otherwise the session's
+ * default jersey set (primary or secondary).
+ */
 export function wornColour(session, player) {
+  const override = session?.colours && session.colours[player.playerNumber];
+  if (override) return override;
   return session?.jersey === "secondary" && player.colour2 ? player.colour2 : player.colour;
 }
 

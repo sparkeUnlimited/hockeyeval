@@ -232,6 +232,7 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.setPlayerActive.js", { tryoutId: TRYOUT, playerNumber: "W-14", active: false }],
       ["Mutation.updatePlayer.js", { tryoutId: TRYOUT, playerNumber: "W-14", position: "D" }],
       ["Mutation.setAttendance.js", { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: false }],
+      ["Mutation.setSessionColours.js", { tryoutId: TRYOUT, sessionId: SESSION, colours: { "W-14": "Red" } }],
       ["Mutation.deletePlayer.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.deletePlayer.2.delete.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],
@@ -471,6 +472,23 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     assert.deepEqual(out.absent, ["W-14"]);
     const none = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "skills", order: 1 } }));
     assert.deepEqual(none.absent, [], "absent defaults to an empty list");
+  });
+
+  test("setSessionColours replaces the per-player colour map after validating keys and values", async () => {
+    const mod = await loadResolver("Mutation.setSessionColours.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, colours: { "W-14": "red", "B-07": "White", "W-04": "" } } }));
+    assert.equal(req.operation, "UpdateItem");
+    assert.equal(req.update.expression, "SET #colours = :colours");
+    assert.deepEqual(fromMapValues(req.update.expressionValues), { ":colours": { "W-14": "Red", "B-07": "White" } });
+    const str = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, colours: JSON.stringify({ "W-14": "Green" }) } }));
+    assert.deepEqual(fromMapValues(str.update.expressionValues), { ":colours": { "W-14": "Green" } }, "AWSJSON string form is accepted");
+    const empty = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, colours: {} } }));
+    assert.deepEqual(fromMapValues(empty.update.expressionValues), { ":colours": {} }, "empty map clears overrides");
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, colours: { "Smith-14": "Red" } } })), "BadRequest", /playerNumber/);
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, colours: { "W-14": "R3d" } } })), "BadRequest", /colour/);
+    const out = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "skills", order: 1, colours: { "W-14": "Red" } } }));
+    assert.deepEqual(out.colours, { "W-14": "Red" });
+    assert.deepEqual(mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "skills", order: 1 } })).colours, {}, "defaults to empty map");
   });
 
   test("player tag: short, upper-cased, never free text long enough for a name", async () => {

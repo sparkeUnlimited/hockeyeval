@@ -68,7 +68,16 @@ only some of your sessions. Tick **AA** on their row in the Players table. Evalu
 player's card and on the scoring sheet, the same as the note on the paper sheets today, and the Rankings tab has an
 *AA only* filter so you can look at them as a group.
 
-**Attendance.** Under *Attendance*, pick the session and untick anyone who is not on the ice. An absent player
+**Jerseys for each ice time.** Under *Attendance & jerseys*, pick the session and set what each player is
+actually wearing. For a skills night use the bulk row: *all forwards → White*, Apply, then *all defence → Red*,
+Apply. For a scrimmage set *everyone* to one colour and then switch the other team's players individually, or
+apply by position first and adjust. Any player can be changed on their own row, and *Other…* adds a colour that
+is not in the list. *Reset to default jerseys* removes every per-player setting for that session and goes back to
+the session's primary/secondary default. Evaluators see exactly these colours for that session; the number never
+changes, and the code under the number reminds them which player it is. The section warns you if two players would
+show as the same code.
+
+**Attendance.** In the same section, untick anyone who is not on the ice. An absent player
 disappears from every evaluator's screen for that session only, cannot be scored for it (the app refuses, even if
 someone tries), and does not count in the "scored" total at the bottom of the evaluators' screens. Rankings show a
 *Sessions* column (attended over total) so you can tell "was there twice and scored well" from "was there five

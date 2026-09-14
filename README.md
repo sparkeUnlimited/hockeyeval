@@ -236,6 +236,9 @@ only thing that grows, and log groups expire after 30 days.
   `Tryout.evaluatorAccess`) gates every write, also at the owner's request.
 - Players carry an optional `colour2` and sessions a `jersey` (`primary`/`secondary`) plus an `updateSession`
   mutation, so scrimmages can be played in the second jersey set without changing player identities.
+- Per-session jersey colours: `Session.colours` (`{ playerNumber: colour }`, replaced whole by
+  `setSessionColours`). Overrides win over the session's `jersey` default; the front end resolves the worn colour
+  in one place (`wornColour` in `web/js/api.js`) for the evaluator grid, chips, sheet, admin tables and CSVs.
 - Per-session attendance: `Session.absent` (a DynamoDB string set edited with `setAttendance`). Absent players
   are hidden from the evaluator grid for that session, `upsertEvaluation` rejects scores for them, and rankings
   show sessions attended. Overall is an average over the evaluations received, so a missed skate never counts

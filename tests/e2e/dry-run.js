@@ -157,10 +157,21 @@ try {
   await admin.locator('#playersBody tr[data-player="W-09"] input[type=checkbox]').check();
   await admin.locator("#msg", { hasText: "W-09 updated" }).waitFor({ timeout: 20000 });
   await admin.selectOption("#aSession", { index: 0 });
-  await admin.locator('#attendGrid label[data-attend="W-12"] input').uncheck();
+  await admin.locator('#attendGrid label[data-attend="W-12"] input[type=checkbox]').uncheck();
   await admin.locator("#msg", { hasText: "W-12 marked absent" }).waitFor({ timeout: 20000 });
   assert(/1 absent/.test(await admin.locator("#aSummary").textContent()), "attendance summary shows 1 absent");
   log("W-09 tagged AA; W-12 marked absent for session 1");
+
+  // Skills night: all defence in Red, forwards stay White; one goalie set individually to Green
+  await admin.selectOption("#bulkWho", "D");
+  await admin.selectOption("#bulkColour", "Red");
+  await admin.click("#bulkApply");
+  await admin.locator("#msg", { hasText: "Defence set to Red" }).waitFor({ timeout: 20000 });
+  await admin.locator('#attendGrid label[data-attend="W-01"] select').selectOption("Green");
+  await admin.locator("#msg", { hasText: "Jersey colours updated" }).waitFor({ timeout: 20000 });
+  assert(/4 colours set/.test(await admin.locator("#aSummary").textContent()), "summary counts per-player colours (3 D + 1 G; B-03 is a forward now)");
+  assert(await admin.locator("#aClash").isHidden(), "no code clashes");
+  log("session 1 jerseys: defence Red, W-01 Green, forwards default White");
 
   // ------------------------------------------------------------------ Evaluator: score 6 online
   await ev.reload();
@@ -174,6 +185,11 @@ try {
   assert((await ev.locator(".player").count()) === 11, "evaluator should see 11 players (W-12 absent)");
   assert((await ev.locator('.player[aria-label^="W-12"]').count()) === 0, "absent player hidden in session 1");
   assert((await ev.locator('.player[aria-label^="W-09"] .tag').textContent()) === "AA", "AA badge on the evaluator card");
+  const codes1a = await ev.locator(".player").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label").split(" ")[0]));
+  // W-04 and B-15 are defence -> Red; B-03 became a forward earlier so stays Blue; W-01 set to Green; forwards default White
+  assert(codes1a.includes("R-04") && codes1a.includes("R-15") && codes1a.includes("B-03") && codes1a.includes("G-01") && codes1a.includes("W-07"), `per-session colours reach the evaluator: ${codes1a.join(" ")}`);
+  const chips = await ev.locator("#chips .chip").allTextContents();
+  assert(chips.includes("Red") && chips.includes("Green") && chips.includes("White"), `filter chips follow the session colours: ${chips.join(",")}`);
   assert(/of 11 scored/.test(await ev.locator("#progressText").textContent()) && /1 absent/.test(await ev.locator("#progressText").textContent()), "progress excludes the absent player");
   log("evaluator signed in, sees 11 players, AA badge visible, absent player hidden");
 
@@ -217,7 +233,7 @@ try {
   await ev.selectOption("#sessionSelect", { index: 0 });
   await ev.locator('.player[aria-label^="W-14"]').waitFor({ timeout: 10000 });
   const codes1 = await ev.locator(".player").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label").split(" ")[0]));
-  assert(codes1.includes("W-14") && codes1.includes("B-17"), "session 1 shows primary codes again");
+  assert(codes1.includes("W-14") && codes1.includes("R-04"), "session 1 shows its own colours again");
   log("secondary jersey colours shown in the scrimmage session, primary in skills");
 
   // ------------------------------------------------------------------ Evaluator: offline, 3 more

@@ -199,6 +199,7 @@ export class TryoutStack extends cdk.Stack {
     unit("Mutation", "setPlayerActive", tableDs, "Mutation.setPlayerActive.js");
     unit("Mutation", "updatePlayer", tableDs, "Mutation.updatePlayer.js");
     unit("Mutation", "setAttendance", tableDs, "Mutation.setAttendance.js");
+    unit("Mutation", "setSessionColours", tableDs, "Mutation.setSessionColours.js");
     pipeline("Mutation", "deletePlayer", [fn("CheckNoScores", tableDs, "Mutation.deletePlayer.1.checkNoScores.js"), fn("DeletePlayer", tableDs, "Mutation.deletePlayer.2.delete.js")]);
     unit("Mutation", "setEvaluatorAccess", tableDs, "Mutation.setEvaluatorAccess.js");
     pipeline("Mutation", "closeTryout", [fn("CloseTryout", tableDs, "Mutation.closeTryout.1.close.js"), getTryoutFn]);

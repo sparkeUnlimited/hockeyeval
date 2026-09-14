@@ -34,8 +34,9 @@ type Session {
   date: AWSDate!
   type: String!            # skills | scrimmage | game
   order: Int!
-  jersey: String!          # primary | secondary: which of the player's two jersey colours is worn this session
+  jersey: String!          # primary | secondary: the DEFAULT jersey colour for this session
   absent: [ID!]!           # playerNumbers marked absent for this session (hidden from evaluators, writes rejected)
+  colours: AWSJSON         # per-player overrides for this session: { "W-14": "Red", ... }. Wins over jersey.
 }
 
 # A player's number never changes. Every player gets two jersey colours at registration; the
@@ -125,6 +126,9 @@ type Mutation {
   # Mark a player present/absent for one session. Absent players are hidden from evaluators for that session
   # and any score for them in that session is rejected, so a missed skate never counts as an evaluation.
   setAttendance(tryoutId: ID!, sessionId: ID!, playerNumber: ID!, present: Boolean!): Session!
+    @aws_auth(cognito_groups: ["admin"])
+  # Replace the session's per-player jersey colours ({ playerNumber: colour }). Empty object clears all overrides.
+  setSessionColours(tryoutId: ID!, sessionId: ID!, colours: AWSJSON!): Session!
     @aws_auth(cognito_groups: ["admin"])
   # Remove a player that has no scores yet (wrong number, entered twice). Players with scores must be released.
   deletePlayer(tryoutId: ID!, playerNumber: ID!): ID! @aws_auth(cognito_groups: ["admin"])

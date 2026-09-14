@@ -285,6 +285,10 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.setAttendance.js
+        setSessionColours:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.setSessionColours.js
         checkNoScores:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -360,6 +364,10 @@ Resources:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
             Pipeline: [setAttendance]
+          setSessionColours:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [setSessionColours]
           closeTryout:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js

@@ -1,7 +1,7 @@
 // Convenor dashboard: setup, rankings, per-evaluator view, CSV export, close.
 // Everything here is by player number only. There is no name field anywhere and no place to type one.
 import { requireAuth, signOut } from "./auth.js";
-import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, isAbsent, AuthError } from "./api.js";
+import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, wornColour, isAbsent, AuthError } from "./api.js";
 import { CRITERIA, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
 registerServiceWorker();
@@ -184,6 +184,7 @@ function renderSetup() {
     typeSel.addEventListener("change", () => updateSession(s, { type: typeSel.value }));
     sb.append(el("tr", { "data-session": s.id }, el("td", {}, String(i + 1)), el("td", {}, labelIn), el("td", {}, dateIn), el("td", {}, typeSel),
       el("td", {}, el("span", { class: `pill ${clash.length ? "bad" : ""}` }, s.jersey === "secondary" ? "secondary" : "primary"),
+        Object.keys(s.colours || {}).length ? el("span", { class: "small muted", style: "margin-left:.4rem" }, `+${Object.keys(s.colours).length} set per player`) : null,
         clash.length ? el("span", { class: "small error", style: "margin-left:.4rem" }, `duplicate codes: ${clash.join(", ")}`) : null),
       el("td", {}, el("button", { class: "btn sm", type: "button", onclick: () => setJersey(s, s.jersey === "secondary" ? "primary" : "secondary") },
         s.jersey === "secondary" ? "Switch to primary" : "Switch to secondary"))));
@@ -290,10 +291,10 @@ $("sType").addEventListener("change", () => { $("sJersey").value = $("sType").va
 async function updateSession(session, patch, okText) {
   await run(async () => {
     const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $label: String, $date: AWSDate, $type: String, $jersey: String) {
-      updateSession(tryoutId: $tryoutId, sessionId: $sessionId, label: $label, date: $date, type: $type, jersey: $jersey) { id label date type order jersey absent } }`,
+      updateSession(tryoutId: $tryoutId, sessionId: $sessionId, label: $label, date: $date, type: $type, jersey: $jersey) { id label date type order jersey absent colours } }`,
       { tryoutId: state.tryout.id, sessionId: session.id, label: patch.label ?? null, date: patch.date ?? null, type: patch.type ?? null, jersey: patch.jersey ?? null });
     Object.assign(session, data.updateSession);
-    normalizeTryout(state.tryout);
+    normalizeTryout(state.tryout); // also parses the colours map
     renderAll();
   }, okText || `${session.label} updated${patch.date ? ` · now on ${patch.date}` : ""}.`);
 }
@@ -461,21 +462,66 @@ function renderAttendance() {
   state.attendSessionId = sel.value || null;
   const session = t.sessions.find((s) => s.id === state.attendSessionId) || null;
   const grid = $("attendGrid"); grid.innerHTML = "";
-  if (!session) { $("aSummary").textContent = "Add a session first."; return; }
+  $("bulkBar").hidden = !session;
+  if (!session) { $("aSummary").textContent = "Add a session first."; $("aClash").hidden = true; return; }
+  fillColourSelect($("bulkColour"), { otherInput: $("bulkColourOther") });
   const players = t.players.filter((p) => p.active);
   let absent = 0;
+  const overrides = Object.keys(session.colours || {}).length;
   for (const p of players) {
     const away = isAbsent(session, p);
     if (away) absent += 1;
     const box = el("input", { type: "checkbox", "aria-label": `${p.playerNumber} present` });
     box.checked = !away;
     box.addEventListener("change", () => setAttendance(session, p, box.checked));
+    // Per-player jersey colour for THIS session. Saves the whole map on change.
+    const cSel = el("select", { class: "colour-select", "aria-label": `Jersey colour for ${p.playerNumber} in ${session.label}` });
+    const cOther = el("input", { type: "text", maxlength: "20", placeholder: "New colour", hidden: true, "aria-label": `New jersey colour for ${p.playerNumber}` });
+    fillColourSelect(cSel, { value: wornColour(session, p) });
+    cSel.addEventListener("change", () => {
+      if (cSel.value === OTHER) { cOther.hidden = false; cOther.focus(); return; }
+      setSessionColours(session, { ...(session.colours || {}), [p.playerNumber]: cSel.value });
+    });
+    const commitOther = () => { const v = cOther.value.trim(); if (v) setSessionColours(session, { ...(session.colours || {}), [p.playerNumber]: v }); };
+    cOther.addEventListener("change", commitOther);
+    cOther.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitOther(); } });
     grid.append(el("label", { class: away ? "absent" : "", "data-attend": p.playerNumber }, box,
-      el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), wornCode(session, p), p.tag ? el("span", { class: "tagpill" }, p.tag) : null));
+      el("span", { class: "swatch", style: `background:${swatchColour(wornColour(session, p))}` }),
+      el("span", { class: "code" }, wornCode(session, p)),
+      el("span", { class: "muted small" }, `${p.position}${p.playerNumber !== wornCode(session, p) ? ` · ${p.playerNumber}` : ""}`),
+      p.tag ? el("span", { class: "tagpill" }, p.tag) : null, cSel, cOther));
   }
-  $("aSummary").textContent = `${players.length - absent} present · ${absent} absent`;
+  $("aSummary").textContent = `${players.length - absent} present · ${absent} absent · ${overrides ? `${overrides} colour${overrides === 1 ? "" : "s"} set for this session` : `default ${session.jersey} jerseys`}`;
+  const clash = jerseyClashes(session);
+  $("aClash").hidden = !clash.length;
+  $("aClash").textContent = clash.length ? `Two players would show as the same code: ${clash.join(", ")}. Give one of them a different colour.` : "";
 }
 $("aSession").addEventListener("change", (ev) => { state.attendSessionId = ev.target.value; renderAttendance(); });
+
+$("bulkApply").addEventListener("click", () => {
+  const session = state.tryout?.sessions.find((s) => s.id === state.attendSessionId);
+  if (!session) return;
+  const colour = colourValue($("bulkColour"), $("bulkColourOther"));
+  if (!colour) { msg("Choose a colour first.", "bad"); return; }
+  const who = $("bulkWho").value;
+  const next = { ...(session.colours || {}) };
+  for (const p of state.tryout.players.filter((x) => x.active && (who === "all" || x.position === who))) next[p.playerNumber] = colour;
+  setSessionColours(session, next, `${who === "all" ? "Everyone" : who === "F" ? "Forwards" : who === "D" ? "Defence" : "Goalies"} set to ${colour} for ${session.label}.`);
+});
+$("bulkReset").addEventListener("click", () => {
+  const session = state.tryout?.sessions.find((s) => s.id === state.attendSessionId);
+  if (session) setSessionColours(session, {}, `${session.label} back to default ${session.jersey} jerseys.`);
+});
+
+async function setSessionColours(session, colours, okText) {
+  await run(async () => {
+    const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $colours: AWSJSON!) {
+      setSessionColours(tryoutId: $tryoutId, sessionId: $sessionId, colours: $colours) { id colours } }`,
+      { tryoutId: state.tryout.id, sessionId: session.id, colours: JSON.stringify(colours) });
+    session.colours = JSON.parse(data.setSessionColours.colours || "{}");
+    renderAll();
+  }, okText || `Jersey colours updated for ${session.label}.`);
+}
 
 async function setAttendance(session, p, present) {
   await run(async () => {

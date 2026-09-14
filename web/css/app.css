@@ -190,7 +190,11 @@ tr.inactive td { opacity: .5; }
 .toolbar select { width: auto; min-width: 140px; }
 input[type=checkbox] { width: 24px; height: 24px; }
 .attend { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; }
-.attend label { display: flex; align-items: center; gap: .5rem; min-height: var(--tap); padding: 0 .6rem; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); font-weight: 700; }
+.attend { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.attend label { display: flex; align-items: center; gap: .5rem; min-height: var(--tap); padding: .3rem .6rem; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); font-weight: 700; flex-wrap: wrap; }
+.attend label .code { min-width: 3.4em; }
+.attend label select { min-height: 40px; width: auto; min-width: 110px; padding: .3rem .5rem; margin-left: auto; font-weight: 600; }
+.attend label input[type=text] { min-height: 40px; width: 120px; padding: .3rem .5rem; }
 .attend label.absent { opacity: .55; text-decoration: line-through; }
 td select.sm, td input.sm { min-height: 40px; width: auto; min-width: 70px; padding: .3rem .5rem; }
 td .colour-select { min-width: 120px; }

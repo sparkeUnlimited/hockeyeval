@@ -141,6 +141,7 @@ const FIELDS = {
   setPlayerActive: [await R("Mutation.setPlayerActive.js")],
   updatePlayer: [await R("Mutation.updatePlayer.js")],
   setAttendance: [await R("Mutation.setAttendance.js")],
+  setSessionColours: [await R("Mutation.setSessionColours.js")],
   deletePlayer: [await R("Mutation.deletePlayer.1.checkNoScores.js"), await R("Mutation.deletePlayer.2.delete.js")],
   setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],
   closeTryout: [await R("Mutation.closeTryout.1.close.js"), await R("Fn.getTryout.js")],
@@ -148,7 +149,7 @@ const FIELDS = {
   deleteEvaluator: [await R("Lambda.adminOps.js")],
   exportUrl: [await R("Lambda.adminOps.js")],
 };
-const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "setAttendance", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
+const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "setAttendance", "setSessionColours", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
 
 async function runField(field, args, identity) {
   const ctx = { args, arguments: args, identity, stash: {}, prev: { result: null }, result: null, error: null, info: { fieldName: field, parentTypeName: "" } };
@@ -167,7 +168,7 @@ function shape(v) {
   if (Array.isArray(v)) return v.map(shape);
   if (v && typeof v === "object") {
     const o = {};
-    for (const [key, val] of Object.entries(v)) o[key] = key === "scores" && val && typeof val === "object" ? JSON.stringify(val) : shape(val);
+    for (const [key, val] of Object.entries(v)) o[key] = (key === "scores" || key === "colours") && val && typeof val === "object" ? JSON.stringify(val) : shape(val);
     return o;
   }
   return v;

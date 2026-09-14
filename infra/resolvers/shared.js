@@ -85,6 +85,22 @@ export function optionalColour(value) {
   return requireColour(value);
 }
 
+/** { playerNumber: colour } map for a session. Keys must be player codes, values colour names. Max 200. */
+export function sanitizeColourMap(raw) {
+  let map = raw;
+  if (typeof map === "string") map = JSON.parse(map);
+  if (!map || typeof map !== "object") util.error("colours must be a JSON object", "BadRequest");
+  const keys = Object.keys(map);
+  if (keys.length > 200) util.error("Too many players", "BadRequest");
+  const clean = {};
+  for (const k of keys) {
+    requirePlayerNumber(k);
+    const v = map[k];
+    if (v !== null && v !== undefined && v !== "") clean[k] = requireColour(v); // blank = no override
+  }
+  return clean;
+}
+
 /** Optional short tag such as "AA". Empty clears it. Letters, digits, space, + and - only: never a name. */
 export function optionalTag(value) {
   if (value === null || value === undefined) return null;
@@ -174,7 +190,7 @@ export function toPlayer(item) {
 export function toSession(item) {
   return {
     id: item.sessionId, label: item.label, date: item.date, type: item.type, order: item.order,
-    jersey: item.jersey || "primary", absent: item.absent || [],
+    jersey: item.jersey || "primary", absent: item.absent || [], colours: item.colours || {},
   };
 }
 
