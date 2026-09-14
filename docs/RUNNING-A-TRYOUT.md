@@ -53,9 +53,16 @@ White,7,F,Green
 Blue,1,G,Yellow
 ```
 
-(primary colour, number, F/D/G, secondary colour) or add them one at a time. You can type any colour name; ones
-already in use are suggested as you type. The app refuses a combination that would make two players show the same
-code in the same session, and the *Sessions* table flags it if it ever happens. If a player withdraws or is released between skates, click
+(primary colour, number, F/D/G, secondary colour) or add them one at a time. The colour pickers default to White
+for the primary jersey and Red for the secondary one; choose *Other…* to add a colour that is not in the list. The app refuses a combination that would make two players show the same
+code in the same session, and the *Sessions* table flags it if it ever happens. **Changes after registration.** A player who switches position before the tryout starts (say from forward to
+defence) is fixed in the Players table: change the position dropdown on their row and it saves immediately. The
+same goes for their secondary colour. A player entered by mistake, or with the wrong number, can be **deleted**
+with the button on their row, as long as nobody has scored them yet; after that the app refuses and you release
+them instead. Number and primary colour cannot be edited because they are the player's identity for the whole
+tryout: delete and re-add if one is wrong.
+
+If a player withdraws or is released between skates, click
 *Release* next to their number; they disappear from the evaluators' screens and from rankings but their scores
 are kept. *Reinstate* brings them back.
 

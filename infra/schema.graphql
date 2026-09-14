@@ -115,6 +115,12 @@ type Mutation {
   upsertPlayers(tryoutId: ID!, players: [PlayerInput!]!): [Player!]! @aws_auth(cognito_groups: ["admin"])
   setPlayerActive(tryoutId: ID!, playerNumber: ID!, active: Boolean!): Player!
     @aws_auth(cognito_groups: ["admin"])
+  # Change a player's position and/or secondary colour. Number and primary colour are the identity: to change
+  # those, delete the player and add them again.
+  updatePlayer(tryoutId: ID!, playerNumber: ID!, position: String, colour2: String): Player!
+    @aws_auth(cognito_groups: ["admin"])
+  # Remove a player that has no scores yet (wrong number, entered twice). Players with scores must be released.
+  deletePlayer(tryoutId: ID!, playerNumber: ID!): ID! @aws_auth(cognito_groups: ["admin"])
   # Lambda-backed (Cognito AdminCreateUser). Cognito emails the temporary password.
   createEvaluator(email: AWSEmail!, displayName: String!): EvaluatorProfile!
     @aws_auth(cognito_groups: ["admin"])

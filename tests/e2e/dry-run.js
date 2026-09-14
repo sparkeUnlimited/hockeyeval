@@ -39,7 +39,10 @@ const assert = (cond, msg) => { if (!cond) throw new Error(`ASSERT: ${msg}`); };
 let server = null;
 if (MOCK) {
   server = spawn(process.execPath, [path.join(ROOT, "scripts", "dev-server.js"), "--port", String(PORT)], { stdio: ["ignore", "pipe", "inherit"] });
-  await new Promise((res) => server.stdout.on("data", (d) => { if (String(d).includes("dev server")) res(); }));
+  await new Promise((res, rej) => {
+    server.stdout.on("data", (d) => { if (String(d).includes("dev server")) res(); });
+    server.on("exit", (code) => rej(new Error(`dev server exited with code ${code} (is port ${PORT} free?)`)));
+  });
   log("mock dev server started");
 }
 
@@ -57,6 +60,7 @@ try {
   // ------------------------------------------------------------------ Admin: set up tryout
   const adminCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const admin = await adminCtx.newPage();
+  admin.on("dialog", (d) => d.accept()); // accept every confirm() the admin page raises
   await login(admin, ADMIN);
   assert(admin.url().includes("admin.html"), "admin should land on admin.html");
   log("admin signed in");
@@ -64,7 +68,6 @@ try {
   await admin.locator("#newTryoutDetails").evaluate((d) => { d.open = true; });
   await admin.fill("#tName", TRYOUT_NAME);
   await admin.fill("#tSeason", "2026-27");
-  admin.once("dialog", (d) => d.accept());
   await admin.click("#tryoutForm button[type=submit]");
   await admin.locator("#tryoutName").filter({ hasText: TRYOUT_NAME }).waitFor({ timeout: 20000 });
   log("tryout created");
@@ -122,6 +125,25 @@ try {
   await admin.locator("#evaluatorsBody tr", { hasText: EVAL.label }).locator(".pill", { hasText: "scoring" }).waitFor({ timeout: 20000 });
   log("admin added the evaluator to the tryout");
 
+  // ------------------------------------------------------------------ Admin: edit position, add one via dropdowns, delete
+  const rowB03 = admin.locator('#playersBody tr[data-player="B-03"]');
+  await rowB03.locator("select").last().selectOption("F"); // position select is the last select in the row
+  await admin.locator("#msg", { hasText: "B-03 updated" }).waitFor({ timeout: 20000 });
+  assert((await admin.locator('#playersBody tr[data-player="B-03"] select').last().inputValue()) === "F", "position change persisted");
+  await rowB03.locator("select").first().selectOption("Orange"); // secondary colour dropdown
+  await admin.locator("#msg", { hasText: "B-03 updated" }).waitFor({ timeout: 20000 });
+  // add-one form defaults: White / Red, then delete that player again (no scores yet)
+  assert((await admin.locator("#pColour").inputValue()) === "White", "primary defaults to White");
+  assert((await admin.locator("#pColour2").inputValue()) === "Red", "secondary defaults to Red");
+  await admin.fill("#pNumber", "99");
+  await admin.selectOption("#pPosition", "D");
+  await admin.click("#playerForm button[type=submit]");
+  await admin.locator('#playersBody tr[data-player="W-99"]').waitFor({ timeout: 20000 });
+  await admin.locator('#playersBody tr[data-player="W-99"] button', { hasText: "Delete" }).click();
+  await admin.locator("#msg", { hasText: "W-99 deleted" }).waitFor({ timeout: 20000 });
+  assert((await admin.locator("#playersBody tr").count()) === 12, "back to 12 players after delete");
+  log("position edited, secondary colour edited, player added with default colours and deleted");
+
   // ------------------------------------------------------------------ Evaluator: score 6 online
   await ev.reload();
   await ev.locator("#tryoutName").filter({ hasText: TRYOUT_NAME }).waitFor({ timeout: 20000 });
@@ -161,8 +183,9 @@ try {
   await ev.selectOption("#sessionSelect", { index: 1 });
   await ev.locator('.player[aria-label^="G-14"]').waitFor({ timeout: 10000 }); // grid re-renders after the session loads
   const codes2 = await ev.locator(".player").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label").split(" ")[0]));
-  assert(codes2.every((c) => /^[GY]-\d\d$/.test(c)), `session 2 should show Green/Yellow codes, saw ${codes2.join(" ")}`);
+  assert(codes2.every((c) => /^[GYO]-\d\d$/.test(c)), `session 2 should show Green/Yellow/Orange codes, saw ${codes2.join(" ")}`);
   assert(codes2.includes("G-14") && codes2.includes("Y-17"), "W-14 should appear as G-14 and B-17 as Y-17");
+  assert(codes2.includes("O-03"), "B-03's secondary colour edit (Orange) reaches the evaluator");
   await ev.locator(".player", { hasText: "14" }).first().click();
   await ev.locator("#sheet").waitFor({ state: "visible" });
   assert((await ev.locator("#sheetNum").textContent()) === "G-14", "sheet shows the worn code");
@@ -194,6 +217,13 @@ try {
   await ev.evaluate(() => window.dispatchEvent(new Event("online")));
   await ev.locator("#syncText", { hasText: "Synced" }).waitFor({ timeout: 45000 });
   log("back online: outbox flushed, dot green");
+
+  // ------------------------------------------------------------------ Admin: delete is refused once a player has scores
+  await admin.click("#refreshBtn");
+  await admin.locator("#msg", { hasText: "Refreshed" }).waitFor({ timeout: 20000 });
+  await admin.locator('#playersBody tr[data-player="B-01"] button', { hasText: "Delete" }).click();
+  await admin.locator("#msg", { hasText: "already has scores" }).waitFor({ timeout: 20000 });
+  log("delete refused for a player with scores");
 
   // ------------------------------------------------------------------ Admin: rankings show 9
   await admin.click("#refreshBtn");

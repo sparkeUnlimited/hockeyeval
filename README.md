@@ -236,5 +236,7 @@ only thing that grows, and log groups expire after 30 days.
   `Tryout.evaluatorAccess`) gates every write, also at the owner's request.
 - Players carry an optional `colour2` and sessions a `jersey` (`primary`/`secondary`) plus an `updateSession`
   mutation, so scrimmages can be played in the second jersey set without changing player identities.
+- `updatePlayer` (position and/or secondary colour) and `deletePlayer` (refused once the player has scores; a
+  two-step pipeline checks GSI1 first) support registration changes before the tryout starts.
 - The Lambda runs Node 22 (Node 20 is deprecated for new functions).
 - Comparator sorts are done on the client because the APPSYNC_JS runtime does not allow them.

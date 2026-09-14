@@ -220,6 +220,9 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.upsertPlayers.js", { tryoutId: TRYOUT, players: [{ colour: "White", number: 14, position: "D" }] }],
       ["Mutation.updateSession.js", { tryoutId: TRYOUT, sessionId: SESSION, jersey: "secondary" }],
       ["Mutation.setPlayerActive.js", { tryoutId: TRYOUT, playerNumber: "W-14", active: false }],
+      ["Mutation.updatePlayer.js", { tryoutId: TRYOUT, playerNumber: "W-14", position: "D" }],
+      ["Mutation.deletePlayer.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
+      ["Mutation.deletePlayer.2.delete.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],
       ["Mutation.closeTryout.1.close.js", { tryoutId: TRYOUT }],
       ["Lambda.adminOps.js", { email: "e@example.com", displayName: "Evaluator 1" }],
@@ -427,6 +430,36 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     assert.equal(req.update.expression, "SET active = :active");
     assert.equal(fromMapValues(req.update.expressionValues)[":active"], false);
     assert.equal(req.condition.expression, "attribute_exists(PK)");
+  });
+
+  test("updatePlayer changes position and/or secondary colour only; identity fields are untouchable", async () => {
+    const mod = await loadResolver("Mutation.updatePlayer.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", position: "D", colour: "Red", number: 99 } }));
+    assert.equal(req.operation, "UpdateItem");
+    assert.equal(req.update.expression, "SET #position = :position", "colour/number args are ignored");
+    assert.deepEqual(fromMapValues(req.update.expressionValues), { ":position": "D" });
+    const c2 = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", colour2: "green" } }));
+    assert.deepEqual(fromMapValues(c2.update.expressionValues), { ":colour2": "Green" });
+    const clear = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", colour2: "" } }));
+    assert.deepEqual(fromMapValues(clear.update.expressionValues), { ":colour2": null });
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14", position: "C" } })), "BadRequest", /position/);
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14" } })), "BadRequest", /Nothing/);
+  });
+
+  test("deletePlayer refuses when the player has scores, otherwise deletes the row", async () => {
+    const check = await loadResolver("Mutation.deletePlayer.1.checkNoScores.js");
+    const del = await loadResolver("Mutation.deletePlayer.2.delete.js");
+    const args = { tryoutId: TRYOUT, playerNumber: "W-14" };
+    const q = check.request(ctx({ identity: adminIdentity(), args }));
+    assert.equal(q.index, "GSI1");
+    assert.deepEqual(fromMapValues(q.query.expressionValues), { ":pk": `TRYOUT#${TRYOUT}#PLAYER#W-14` });
+    throwsType(() => check.response(ctx({ args, result: { items: [], scannedCount: 2 } })), "HasScores", /Release/);
+    assert.equal(check.response(ctx({ args, result: { items: [], scannedCount: 0 } })), 0);
+    const d = del.request(ctx({ identity: adminIdentity(), args }));
+    assert.equal(d.operation, "DeleteItem");
+    assert.deepEqual(fromMapValues(d.key), { PK: `TRYOUT#${TRYOUT}`, SK: "PLAYER#W-14" });
+    assert.equal(d.condition.expression, "attribute_exists(PK)");
+    assert.equal(del.response(ctx({ args, result: { PK: "x" } })), "W-14");
   });
 
   test("closeTryout sets status=closed and stashes the id for the getTryout step", async () => {

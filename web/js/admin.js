@@ -176,21 +176,39 @@ function renderSetup() {
   });
   if (!t.sessions.length) sb.append(el("tr", {}, el("td", { colspan: 6, class: "muted" }, "No sessions yet.")));
 
-  // Colour suggestions for the free-text colour inputs ("add a colour if needed").
-  const dl = $("colourList"); dl.innerHTML = "";
-  for (const c of knownColours()) dl.append(el("option", { value: c }));
+  // Colour dropdowns on the add-one form: default White / Red, "Other…" to add a colour.
+  fillColourSelect($("pColour"), { otherInput: $("pColourOther") });
+  fillColourSelect($("pColour2"), { allowNone: true, otherInput: $("pColour2Other") });
 
   const pb = $("playersBody"); pb.innerHTML = "";
   const players = t.players.filter((p) => state.showInactive || p.active);
   $("playerCount").textContent = `${t.players.filter((p) => p.active).length} active · ${t.players.filter((p) => !p.active).length} released`;
   for (const p of players) {
-    pb.append(el("tr", { class: p.active ? "" : "inactive" },
+    // Secondary colour: dropdown that saves on change; "Other…" reveals a text box.
+    const c2Sel = el("select", { class: "colour-select sm", "aria-label": `Secondary colour for ${p.playerNumber}` });
+    const c2Other = el("input", { type: "text", maxlength: "20", placeholder: "New colour", hidden: true, style: "margin-top:.3rem", "aria-label": `New secondary colour for ${p.playerNumber}` });
+    fillColourSelect(c2Sel, { value: p.colour2 || "", allowNone: true });
+    c2Sel.addEventListener("change", () => {
+      if (c2Sel.value === OTHER) { c2Other.hidden = false; c2Other.focus(); return; }
+      updatePlayer(p, { colour2: c2Sel.value });
+    });
+    const commitOther = () => { const v = c2Other.value.trim(); if (v) updatePlayer(p, { colour2: v }); };
+    c2Other.addEventListener("change", commitOther);
+    c2Other.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitOther(); } });
+
+    const posSel = el("select", { class: "sm", "aria-label": `Position for ${p.playerNumber}` },
+      ...["F", "D", "G"].map((x) => el("option", { value: x, selected: x === p.position }, x)));
+    posSel.addEventListener("change", () => updatePlayer(p, { position: posSel.value }));
+
+    pb.append(el("tr", { class: p.active ? "" : "inactive", "data-player": p.playerNumber },
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber)),
-      el("td", {}, p.colour),
-      el("td", {}, p.colour2 ? el("span", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour2)}` }), p.colour2) : el("span", { class: "muted" }, "–")),
-      el("td", { class: "num" }, String(p.number)), el("td", {}, p.position),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), p.colour),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour2 || "")}` }), c2Sel, c2Other),
+      el("td", { class: "num" }, String(p.number)), el("td", {}, posSel),
       el("td", {}, el("span", { class: `pill ${p.active ? "ok" : "bad"}` }, p.active ? "active" : "released")),
-      el("td", {}, el("button", { class: "btn sm", type: "button", onclick: () => setActive(p, !p.active) }, p.active ? "Release" : "Reinstate")),
+      el("td", {}, el("div", { class: "row", style: "flex-wrap:nowrap" },
+        el("button", { class: "btn sm", type: "button", onclick: () => setActive(p, !p.active) }, p.active ? "Release" : "Reinstate"),
+        el("button", { class: "btn sm danger", type: "button", onclick: () => deletePlayer(p) }, "Delete"))),
     ));
   }
   if (!players.length) pb.append(el("tr", {}, el("td", { colspan: 7, class: "muted" }, "No players yet.")));
@@ -256,11 +274,37 @@ async function setJersey(session, jersey) {
   }, `${session.label} now uses ${jersey} jersey colours.`);
 }
 
-/** Every colour in use (both jersey sets), for the type-ahead lists. */
+const COMMON_COLOURS = ["White", "Red", "Blue", "Green", "Yellow", "Orange", "Black", "Purple", "Grey", "Pink", "Teal", "Gold"];
+const OTHER = "__other__";
+
+/** Common colours plus every colour already in use (both jersey sets). */
 function knownColours() {
-  const set = new Set();
+  const set = new Set(COMMON_COLOURS);
   for (const p of state.tryout?.players || []) { set.add(p.colour); if (p.colour2) set.add(p.colour2); }
-  return [...set].sort();
+  return [...set].sort((a, b) => COMMON_COLOURS.indexOf(a) - COMMON_COLOURS.indexOf(b) || a.localeCompare(b));
+}
+
+/**
+ * Fill a <select> with the known colours plus "Other…" (and "None" when allowNone). Keeps the current value.
+ * When "Other…" is chosen, the paired text input is revealed for a new colour name.
+ */
+function fillColourSelect(sel, { value, allowNone = false, otherInput = null } = {}) {
+  const current = value ?? sel.value ?? "";
+  sel.innerHTML = "";
+  if (allowNone) sel.append(el("option", { value: "" }, "None"));
+  for (const c of knownColours()) sel.append(el("option", { value: c }, c));
+  sel.append(el("option", { value: OTHER }, "Other…"));
+  const wanted = current || sel.dataset.default || "";
+  sel.value = [...sel.options].some((o) => o.value === wanted) ? wanted : (allowNone ? "" : "White");
+  if (otherInput && !sel.dataset.wired) {
+    sel.dataset.wired = "1";
+    sel.addEventListener("change", () => { otherInput.hidden = sel.value !== OTHER; if (sel.value === OTHER) otherInput.focus(); });
+  }
+}
+/** The colour a select + optional "other" input currently represent ("" = none). */
+function colourValue(sel, otherInput) {
+  if (sel.value === OTHER) return (otherInput?.value || "").trim();
+  return sel.value;
 }
 
 /** Display codes that would appear twice in a session (e.g. two players both showing "G-07"). */
@@ -333,11 +377,48 @@ $("playersCsvForm").addEventListener("submit", async (ev) => {
 
 $("playerForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
-  const p = { colour: $("pColour").value.trim(), colour2: $("pColour2").value.trim() || null, number: Number($("pNumber").value), position: $("pPosition").value };
-  await run(async () => { await upsertPlayers([p]); $("pNumber").value = ""; await loadAll(); }, "Player added.");
+  const colour = colourValue($("pColour"), $("pColourOther"));
+  const colour2 = colourValue($("pColour2"), $("pColour2Other"));
+  if (!colour) { msg("Choose a primary colour or type a new one.", "bad"); return; }
+  const p = { colour, colour2: colour2 || null, number: Number($("pNumber").value), position: $("pPosition").value };
+  await run(async () => {
+    await upsertPlayers([p]);
+    $("pNumber").value = ""; $("pColourOther").value = ""; $("pColour2Other").value = "";
+    await loadAll();
+    // Keep the colours the convenor just used selected for the next entry.
+    fillColourSelect($("pColour"), { value: colour }); fillColourSelect($("pColour2"), { value: colour2, allowNone: true });
+    $("pColourOther").hidden = true; $("pColour2Other").hidden = true;
+    $("pNumber").focus();
+  }, "Player added.");
 });
 
 $("showInactive").addEventListener("change", (ev) => { state.showInactive = ev.target.checked; renderSetup(); });
+
+async function updatePlayer(p, patch) {
+  if (patch.colour2 !== undefined) {
+    // Guard against two players sharing a code in a secondary-jersey session.
+    const merged = (state.tryout.players || []).map((x) => (x.playerNumber === p.playerNumber ? { ...x, colour2: patch.colour2 || null } : x));
+    const dups = jerseyClashes({ jersey: "secondary" }, merged);
+    if (dups.length) { msg(`That would make two players show as ${dups.join(", ")} in secondary-jersey sessions.`, "bad"); renderSetup(); return; }
+  }
+  await run(async () => {
+    const data = await gql(`mutation($tryoutId: ID!, $playerNumber: ID!, $position: String, $colour2: String) {
+      updatePlayer(tryoutId: $tryoutId, playerNumber: $playerNumber, position: $position, colour2: $colour2) { playerNumber position colour2 } }`,
+      { tryoutId: state.tryout.id, playerNumber: p.playerNumber, position: patch.position ?? null, colour2: patch.colour2 ?? null });
+    Object.assign(p, data.updatePlayer);
+    renderAll();
+  }, `${p.playerNumber} updated.`);
+}
+
+async function deletePlayer(p) {
+  if (!confirm(`Delete ${p.playerNumber} from this tryout? Only possible while they have no scores.`)) return;
+  await run(async () => {
+    await gql(`mutation($tryoutId: ID!, $playerNumber: ID!) { deletePlayer(tryoutId: $tryoutId, playerNumber: $playerNumber) }`,
+      { tryoutId: state.tryout.id, playerNumber: p.playerNumber });
+    state.tryout.players = state.tryout.players.filter((x) => x.playerNumber !== p.playerNumber);
+    renderAll();
+  }, `${p.playerNumber} deleted.`);
+}
 
 async function setActive(p, active) {
   await run(async () => {

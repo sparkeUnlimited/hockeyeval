@@ -56,6 +56,16 @@ async function execute(req) {
       checkCondition(req.condition, existing);
       const item = applyUpdate({ ...(existing || key) }, req.update); db.set(k(key.PK, key.SK), item); return item;
     }
+    case "DeleteItem": {
+      const key = fromMapValues(req.key); const existing = db.get(k(key.PK, key.SK));
+      checkCondition(req.condition, existing);
+      db.delete(k(key.PK, key.SK)); return existing || null;
+    }
+    case "DeleteItem": {
+      const key = fromMapValues(req.key); const existing = db.get(k(key.PK, key.SK));
+      checkCondition(req.condition, existing);
+      db.delete(k(key.PK, key.SK)); return existing || null;
+    }
     case "Query": {
       const values = fromMapValues(req.query.expressionValues);
       const m = req.query.expression.match(/^(\w+) = :(\w+)(?: AND begins_with\((\w+), :(\w+)\))?$/);
@@ -119,13 +129,15 @@ const FIELDS = {
   updateSession: [await R("Mutation.updateSession.js")],
   upsertPlayers: [await R("Mutation.upsertPlayers.js")],
   setPlayerActive: [await R("Mutation.setPlayerActive.js")],
+  updatePlayer: [await R("Mutation.updatePlayer.js")],
+  deletePlayer: [await R("Mutation.deletePlayer.1.checkNoScores.js"), await R("Mutation.deletePlayer.2.delete.js")],
   setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],
   closeTryout: [await R("Mutation.closeTryout.1.close.js"), await R("Fn.getTryout.js")],
   createEvaluator: [await R("Lambda.adminOps.js")],
   deleteEvaluator: [await R("Lambda.adminOps.js")],
   exportUrl: [await R("Lambda.adminOps.js")],
 };
-const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
+const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
 
 async function runField(field, args, identity) {
   const ctx = { args, arguments: args, identity, stash: {}, prev: { result: null }, result: null, error: null, info: { fieldName: field, parentTypeName: "" } };

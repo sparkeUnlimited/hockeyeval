@@ -63,7 +63,7 @@
 
     <div class="card" id="playersCard">
       <h2>Players</h2>
-      <p class="small muted">Players are jersey colour + number only. Every player gets a <b>primary</b> and a <b>secondary</b> jersey colour at registration; the number is the same on both. A player's code is built from the primary colour (White 14 = <code>W-14</code>). Within one jersey set, use colours with different first letters. Type any colour name; ones already in use are suggested. <b>Never paste a roster with names.</b></p>
+      <p class="small muted">Players are jersey colour + number only. Every player gets a <b>primary</b> and a <b>secondary</b> jersey colour at registration; the number is the same on both. A player's code is built from the primary colour (White 14 = <code>W-14</code>). Within one jersey set, use colours with different first letters. Pick a colour from the list or choose <i>Other…</i> to add a new one. <b>Never paste a roster with names.</b></p>
       <div class="row" style="align-items:flex-start">
         <form id="playersCsvForm" class="grow">
           <div class="field">
@@ -74,8 +74,12 @@
           <button class="btn primary" type="submit">Add players from CSV</button>
         </form>
         <form id="playerForm" style="flex:0 0 260px">
-          <div class="field"><label for="pColour">Primary colour</label><input id="pColour" type="text" maxlength="20" placeholder="White" list="colourList" required></div>
-          <div class="field"><label for="pColour2">Secondary colour</label><input id="pColour2" type="text" maxlength="20" placeholder="Green" list="colourList"></div>
+          <div class="field"><label for="pColour">Primary colour</label>
+            <select id="pColour" class="colour-select" data-default="White"></select>
+            <input id="pColourOther" type="text" maxlength="20" placeholder="New colour name" hidden></div>
+          <div class="field"><label for="pColour2">Secondary colour</label>
+            <select id="pColour2" class="colour-select" data-default="Red"></select>
+            <input id="pColour2Other" type="text" maxlength="20" placeholder="New colour name" hidden></div>
           <div class="field"><label for="pNumber">Number</label><input id="pNumber" type="number" min="0" max="999" required></div>
           <div class="field"><label for="pPosition">Position</label>
             <select id="pPosition"><option>F</option><option>D</option><option>G</option></select></div>
@@ -83,8 +87,8 @@
         </form>
       </div>
       <div class="toolbar" style="margin-top:.75rem"><label><input id="showInactive" type="checkbox"> Show released players</label><span id="playerCount" class="muted small"></span></div>
+      <p class="small muted">Position and secondary colour can be changed in the table (they save immediately). <b>Delete</b> only works for players with no scores yet; use <b>Release</b> once scoring has started.</p>
       <div class="table-wrap"><table><thead><tr><th>Player</th><th>Primary</th><th>Secondary</th><th class="num">No.</th><th>Pos</th><th>Status</th><th></th></tr></thead><tbody id="playersBody"></tbody></table></div>
-      <datalist id="colourList"></datalist>
     </div>
 
     <div class="card" id="evaluatorsCard">

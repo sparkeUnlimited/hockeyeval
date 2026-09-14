@@ -277,6 +277,18 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.setEvaluatorAccess.js
+        updatePlayer:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.updatePlayer.js
+        checkNoScores:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.deletePlayer.1.checkNoScores.js
+        deletePlayerRow:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.deletePlayer.2.delete.js
         closeTryout:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -332,6 +344,14 @@ Resources:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
             Pipeline: [setEvaluatorAccess]
+          updatePlayer:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [updatePlayer]
+          deletePlayer:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [checkNoScores, deletePlayerRow]
           closeTryout:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js

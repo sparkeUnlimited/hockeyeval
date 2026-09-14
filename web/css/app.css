@@ -186,6 +186,8 @@ tr.inactive td { opacity: .5; }
 .toolbar label { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; }
 .toolbar select { width: auto; min-width: 140px; }
 input[type=checkbox] { width: 24px; height: 24px; }
+td select.sm, td input.sm { min-height: 40px; width: auto; min-width: 70px; padding: .3rem .5rem; }
+td .colour-select { min-width: 120px; }
 .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,.35); vertical-align: -2px; margin-right: .3rem; }
 .login { max-width: 420px; margin: 8vh auto 0; }
 .login .logo { font-size: 2.4rem; text-align: center; margin-bottom: .25rem; }
