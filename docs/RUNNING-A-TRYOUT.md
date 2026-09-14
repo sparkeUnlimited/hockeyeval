@@ -28,7 +28,8 @@ click *Create tryout*. Everyone who signs in from now on sees this tryout.
 Under *Sessions*, add one line per skate: a label (`Skate 1 – Skills`), the date, the type (skills, scrimmage or
 game) and which **jerseys** are worn: primary or secondary (see the next step). Skills sessions normally use the
 primary colours and scrimmages the secondary ones; the form suggests that, and you can switch a session later
-with the button in the table. Evaluators pick the session they are scoring from a dropdown, and it defaults to
+with the button in the table. If an ice time moves, change the date (or the label or type) right in the table;
+it saves as soon as you leave the field, and evaluators see the new date in their session picker. Evaluators pick the session they are scoring from a dropdown, and it defaults to
 today's.
 
 ### 4. Plan jerseys and enter the players

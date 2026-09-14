@@ -172,7 +172,17 @@ function renderSetup() {
   const sb = $("sessionsBody"); sb.innerHTML = "";
   t.sessions.forEach((s, i) => {
     const clash = jerseyClashes(s);
-    sb.append(el("tr", {}, el("td", {}, String(i + 1)), el("td", {}, s.label), el("td", {}, s.date), el("td", {}, s.type),
+    // Label, date and type are edited in place and saved on change (dates move, rinks cancel).
+    const labelIn = el("input", { type: "text", class: "sm", maxlength: "60", value: s.label, "aria-label": `Label for session ${i + 1}`, style: "min-width:200px" });
+    const commitLabel = () => { const v = labelIn.value.trim(); if (v && v !== s.label) updateSession(s, { label: v }); };
+    labelIn.addEventListener("change", commitLabel);
+    labelIn.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); labelIn.blur(); } });
+    const dateIn = el("input", { type: "date", class: "sm", value: s.date, "aria-label": `Date for ${s.label}` });
+    dateIn.addEventListener("change", () => { if (dateIn.value && dateIn.value !== s.date) updateSession(s, { date: dateIn.value }); });
+    const typeSel = el("select", { class: "sm", "aria-label": `Type for ${s.label}` },
+      ...["skills", "scrimmage", "game"].map((x) => el("option", { value: x, selected: x === s.type }, x)));
+    typeSel.addEventListener("change", () => updateSession(s, { type: typeSel.value }));
+    sb.append(el("tr", { "data-session": s.id }, el("td", {}, String(i + 1)), el("td", {}, labelIn), el("td", {}, dateIn), el("td", {}, typeSel),
       el("td", {}, el("span", { class: `pill ${clash.length ? "bad" : ""}` }, s.jersey === "secondary" ? "secondary" : "primary"),
         clash.length ? el("span", { class: "small error", style: "margin-left:.4rem" }, `duplicate codes: ${clash.join(", ")}`) : null),
       el("td", {}, el("button", { class: "btn sm", type: "button", onclick: () => setJersey(s, s.jersey === "secondary" ? "primary" : "secondary") },
@@ -276,12 +286,20 @@ $("sessionForm").addEventListener("submit", async (ev) => {
 // Scrimmages default to the secondary jersey in the form; the convenor can still change it.
 $("sType").addEventListener("change", () => { $("sJersey").value = $("sType").value === "skills" ? "primary" : "secondary"; });
 
-async function setJersey(session, jersey) {
+/** Partial update of a session (label, date, type, jersey). Sessions re-sort by date after a date change. */
+async function updateSession(session, patch, okText) {
   await run(async () => {
-    await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $jersey: String) { updateSession(tryoutId: $tryoutId, sessionId: $sessionId, jersey: $jersey) { id jersey } }`,
-      { tryoutId: state.tryout.id, sessionId: session.id, jersey });
-    await loadAll();
-  }, `${session.label} now uses ${jersey} jersey colours.`);
+    const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $label: String, $date: AWSDate, $type: String, $jersey: String) {
+      updateSession(tryoutId: $tryoutId, sessionId: $sessionId, label: $label, date: $date, type: $type, jersey: $jersey) { id label date type order jersey absent } }`,
+      { tryoutId: state.tryout.id, sessionId: session.id, label: patch.label ?? null, date: patch.date ?? null, type: patch.type ?? null, jersey: patch.jersey ?? null });
+    Object.assign(session, data.updateSession);
+    normalizeTryout(state.tryout);
+    renderAll();
+  }, okText || `${session.label} updated${patch.date ? ` · now on ${patch.date}` : ""}.`);
+}
+
+async function setJersey(session, jersey) {
+  await updateSession(session, { jersey }, `${session.label} now uses ${jersey} jersey colours.`);
 }
 
 const COMMON_COLOURS = ["White", "Red", "Blue", "Green", "Yellow", "Orange", "Black", "Purple", "Grey", "Pink", "Teal", "Gold"];

@@ -79,9 +79,18 @@ try {
     await admin.selectOption("#sType", type);
     await admin.selectOption("#sJersey", jersey);
     await admin.click("#sessionForm button[type=submit]");
-    await admin.locator("#sessionsBody tr", { hasText: label }).locator(".pill", { hasText: jersey }).waitFor({ timeout: 20000 });
+    await admin.locator("#sessionsBody tr").filter({ has: admin.locator(`input[value="${label}"]`) }).locator(".pill", { hasText: jersey }).waitFor({ timeout: 20000 });
   }
   log("2 sessions added (skills = primary jerseys, scrimmage = secondary jerseys)");
+
+  // Move the scrimmage to a later date, in place
+  const later = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+  const scrimRow = admin.locator("#sessionsBody tr").filter({ has: admin.locator('input[value="Skate 2 – Scrimmage"]') });
+  await scrimRow.locator('input[type=date]').fill(later);
+  await scrimRow.locator('input[type=date]').dispatchEvent("change");
+  await admin.locator("#msg", { hasText: `now on ${later}` }).waitFor({ timeout: 20000 });
+  assert((await admin.locator("#sessionsBody tr").nth(1).locator("input[type=date]").inputValue()) === later, "date change persisted and row still second (later date)");
+  log(`scrimmage moved to ${later}`);
 
   await admin.fill("#playersCsv", PLAYERS.map((p) => p.join(",")).join("\n"));
   await admin.click("#playersCsvForm button[type=submit]");
@@ -159,6 +168,7 @@ try {
   assert(await ev.locator("#banner").isHidden(), "banner should be gone once the evaluator is on the list");
   const sessionOptions = await ev.locator("#sessionSelect option").allTextContents();
   assert(sessionOptions.length === 2, `expected 2 sessions in picker, saw ${sessionOptions.length}`);
+  assert(sessionOptions[1].includes(later), "evaluator's picker shows the moved date");
   await ev.selectOption("#sessionSelect", { index: 0 });
   await ev.locator(".player").first().waitFor();
   assert((await ev.locator(".player").count()) === 11, "evaluator should see 11 players (W-12 absent)");
