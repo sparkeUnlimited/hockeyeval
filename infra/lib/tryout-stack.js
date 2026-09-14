@@ -190,6 +190,7 @@ export class TryoutStack extends cdk.Stack {
     // Mutations
     pipeline("Mutation", "upsertEvaluation", [
       fn("LoadEvalContext", tableDs, "Mutation.upsertEvaluation.1.loadContext.js"),
+      fn("CheckTeam", tableDs, "Mutation.upsertEvaluation.1b.checkTeam.js"),
       fn("PutEvaluation", tableDs, "Mutation.upsertEvaluation.2.put.js"),
     ]);
     unit("Mutation", "createTryout", tableDs, "Mutation.createTryout.js");
@@ -200,6 +201,10 @@ export class TryoutStack extends cdk.Stack {
     unit("Mutation", "updatePlayer", tableDs, "Mutation.updatePlayer.js");
     unit("Mutation", "setAttendance", tableDs, "Mutation.setAttendance.js");
     unit("Mutation", "setSessionColours", tableDs, "Mutation.setSessionColours.js");
+    unit("Mutation", "createTeam", tableDs, "Mutation.createTeam.js");
+    unit("Mutation", "deleteTeam", tableDs, "Mutation.deleteTeam.js");
+    unit("Mutation", "setTeamPlayers", tableDs, "Mutation.setTeamPlayers.js");
+    unit("Mutation", "setSessionTeams", tableDs, "Mutation.setSessionTeams.js");
     pipeline("Mutation", "deletePlayer", [fn("CheckNoScores", tableDs, "Mutation.deletePlayer.1.checkNoScores.js"), fn("DeletePlayer", tableDs, "Mutation.deletePlayer.2.delete.js")]);
     unit("Mutation", "setEvaluatorAccess", tableDs, "Mutation.setEvaluatorAccess.js");
     pipeline("Mutation", "closeTryout", [fn("CloseTryout", tableDs, "Mutation.closeTryout.1.close.js"), getTryoutFn]);

@@ -236,6 +236,11 @@ only thing that grows, and log groups expire after 30 days.
   `Tryout.evaluatorAccess`) gates every write, also at the owner's request.
 - Players carry an optional `colour2` and sessions a `jersey` (`primary`/`secondary`) plus an `updateSession`
   mutation, so scrimmages can be played in the second jersey set without changing player identities.
+- Teams: `TRYOUT#/TEAM#<id>` rows (`name`, `players` list) with `createTeam`, `deleteTeam`, `setTeamPlayers`;
+  `Session.teams` (`[{ teamId, colour }]`, `setSessionTeams`). The write pipeline gained a step that reads the
+  session's team rosters live and rejects a score for a player not dressed. The front end derives
+  `teamColours`/`teamOf` per session in `normalizeTryout` and resolves precedence in `wornColour`:
+  per-player override, then team colour, then the session's primary/secondary default.
 - Per-session jersey colours: `Session.colours` (`{ playerNumber: colour }`, replaced whole by
   `setSessionColours`). Overrides win over the session's `jersey` default; the front end resolves the worn colour
   in one place (`wornColour` in `web/js/api.js`) for the evaluator grid, chips, sheet, admin tables and CSVs.

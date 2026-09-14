@@ -68,16 +68,26 @@ only some of your sessions. Tick **AA** on their row in the Players table. Evalu
 player's card and on the scoring sheet, the same as the note on the paper sheets today, and the Rankings tab has an
 *AA only* filter so you can look at them as a group.
 
-**Jerseys for each ice time.** Under *Attendance & jerseys*, pick the session and set what each player is
-actually wearing. For a skills night use the bulk row: *all forwards → White*, Apply, then *all defence → Red*,
-Apply. For a scrimmage set *everyone* to one colour and then switch the other team's players individually, or
-apply by position first and adjust. Any player can be changed on their own row, and *Other…* adds a colour that
+**Teams for scrimmages and games.** Under *Teams*, create a team ("Team 1", "Team 2"…) and tick the players on
+it. Make as many teams as you need; a player can be on more than one (the day-2 teams and the Wednesday teams can
+overlap however you like). Then, in the *Sessions* table, each scrimmage or game row has a *Teams on the ice*
+cell: pick a team, pick its colour, press *+ team*, and do it again for the other team. That is the whole setup
+for a game: "Team 1 in Red vs Team 2 in White". Players who are not on a playing team are **not dressed** for
+that session: evaluators do not see them, cannot score them, and the session does not count in their Sessions
+column. Use the ✕ on a team pill to take it off a session, and *Delete team* under *Teams* when a grouping is no
+longer needed. Skills sessions ignore teams: everyone plays.
+
+**Jerseys for skills nights.** Under *Attendance & jerseys*, pick the session and set what each player is
+actually wearing. Use the bulk row: *all forwards → White*, Apply, then *all defence → Red*, Apply. Individual
+rows can still be changed, and a colour set here for a player also overrides their team colour in a game if a
+player has to borrow a jersey. Any player can be changed on their own row, and *Other…* adds a colour that
 is not in the list. *Reset to default jerseys* removes every per-player setting for that session and goes back to
 the session's primary/secondary default. Evaluators see exactly these colours for that session; the number never
 changes, and the code under the number reminds them which player it is. The section warns you if two players would
 show as the same code.
 
-**Attendance.** In the same section, untick anyone who is not on the ice. An absent player
+**Attendance.** In the same section, untick anyone who is not on the ice. In a team session the list is grouped
+by team, with the not-dressed players shown greyed at the bottom. An absent player
 disappears from every evaluator's screen for that session only, cannot be scored for it (the app refuses, even if
 someone tries), and does not count in the "scored" total at the bottom of the evaluators' screens. Rankings show a
 *Sessions* column (attended over total) so you can tell "was there twice and scored well" from "was there five

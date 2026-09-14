@@ -35,6 +35,11 @@ const PLAYERS = [["White", 1, "G", "Green"], ["White", 4, "D", "Green"], ["White
 
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const assert = (cond, msg) => { if (!cond) throw new Error(`ASSERT: ${msg}`); };
+/** Wait for the admin status line to contain `text`; on timeout, report what it actually says. */
+async function expectMsg(page, text, timeout = 20000) {
+  try { await page.locator("#msg", { hasText: text }).waitFor({ timeout }); }
+  catch (e) { throw new Error(`expected message containing "${text}" but #msg says: "${(await page.locator("#msg").textContent()).trim()}" (visible: ${await page.locator("#msg").isVisible()})`); }
+}
 
 let server = null;
 if (MOCK) {
@@ -137,10 +142,10 @@ try {
   // ------------------------------------------------------------------ Admin: edit position, add one via dropdowns, delete
   const rowB03 = admin.locator('#playersBody tr[data-player="B-03"]');
   await rowB03.locator("select").last().selectOption("F"); // position select is the last select in the row
-  await admin.locator("#msg", { hasText: "B-03 updated" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "B-03 updated");
   assert((await admin.locator('#playersBody tr[data-player="B-03"] select').last().inputValue()) === "F", "position change persisted");
   await rowB03.locator("select").first().selectOption("Orange"); // secondary colour dropdown
-  await admin.locator("#msg", { hasText: "B-03 updated" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "B-03 updated");
   // add-one form defaults: White / Red, then delete that player again (no scores yet)
   assert((await admin.locator("#pColour").inputValue()) === "White", "primary defaults to White");
   assert((await admin.locator("#pColour2").inputValue()) === "Red", "secondary defaults to Red");
@@ -149,16 +154,16 @@ try {
   await admin.click("#playerForm button[type=submit]");
   await admin.locator('#playersBody tr[data-player="W-99"]').waitFor({ timeout: 20000 });
   await admin.locator('#playersBody tr[data-player="W-99"] button', { hasText: "Delete" }).click();
-  await admin.locator("#msg", { hasText: "W-99 deleted" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "W-99 deleted");
   assert((await admin.locator("#playersBody tr").count()) === 12, "back to 12 players after delete");
   log("position edited, secondary colour edited, player added with default colours and deleted");
 
   // Tag W-09 as AA and mark W-12 absent for session 1
   await admin.locator('#playersBody tr[data-player="W-09"] input[type=checkbox]').check();
-  await admin.locator("#msg", { hasText: "W-09 updated" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "W-09 updated");
   await admin.selectOption("#aSession", { index: 0 });
   await admin.locator('#attendGrid label[data-attend="W-12"] input[type=checkbox]').uncheck();
-  await admin.locator("#msg", { hasText: "W-12 marked absent" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "W-12 marked absent");
   assert(/1 absent/.test(await admin.locator("#aSummary").textContent()), "attendance summary shows 1 absent");
   log("W-09 tagged AA; W-12 marked absent for session 1");
 
@@ -166,12 +171,37 @@ try {
   await admin.selectOption("#bulkWho", "D");
   await admin.selectOption("#bulkColour", "Red");
   await admin.click("#bulkApply");
-  await admin.locator("#msg", { hasText: "Defence set to Red" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "Defence set to Red");
   await admin.locator('#attendGrid label[data-attend="W-01"] select').selectOption("Green");
-  await admin.locator("#msg", { hasText: "Jersey colours updated" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "Jersey colours updated");
   assert(/4 colours set/.test(await admin.locator("#aSummary").textContent()), "summary counts per-player colours (3 D + 1 G; B-03 is a forward now)");
   assert(await admin.locator("#aClash").isHidden(), "no code clashes");
   log("session 1 jerseys: defence Red, W-01 Green, forwards default White");
+
+  // Teams: Team 1 (6 players) and Team 2 (5 players); B-17 on neither. Scrimmage: Team 1 in Red vs Team 2 in White.
+  for (const [name, members] of [["Team 1", ["W-01", "W-04", "W-07", "B-08", "B-10", "B-03"]], ["Team 2", ["B-01", "W-09", "W-12", "W-14", "B-15"]]]) {
+    await admin.fill("#teamName", name);
+    await admin.click("#teamForm button[type=submit]");
+    const det = admin.locator(`#teamsList details.team`).filter({ hasText: name });
+    await det.waitFor({ timeout: 20000 });
+    await det.evaluate((d) => { d.open = true; });
+    for (let i = 0; i < members.length; i++) {
+      await det.locator(`label:has-text("${members[i]}") input[type=checkbox]`).check();
+      await expectMsg(admin, `${name}: ${i + 1} players.`); // exact count: each tick re-renders the tables when it lands
+    }
+  }
+  const scrim = admin.locator("#sessionsBody tr").filter({ has: admin.locator('input[value="Skate 2 – Scrimmage"]') });
+  await scrim.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 1" });
+  await scrim.locator('select[aria-label^="Colour for the team"]').selectOption("Red");
+  await scrim.locator("button", { hasText: "+ team" }).click();
+  await expectMsg(admin, "Team 1 in Red");
+  await scrim.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 2" });
+  await scrim.locator('select[aria-label^="Colour for the team"]').selectOption("White");
+  await scrim.locator("button", { hasText: "+ team" }).click();
+  await expectMsg(admin, "Team 1 in Red vs Team 2 in White");
+  await admin.selectOption("#aSession", { index: 1 });
+  assert(/1 not dressed/.test(await admin.locator("#aSummary").textContent()), "B-17 is not dressed for the scrimmage");
+  log("teams created; scrimmage = Team 1 (Red) vs Team 2 (White); B-17 not dressed");
 
   // ------------------------------------------------------------------ Evaluator: score 6 online
   await ev.reload();
@@ -219,16 +249,19 @@ try {
 
   // ------------------------------------------------------------------ Secondary jerseys in session 2
   await ev.selectOption("#sessionSelect", { index: 1 });
-  await ev.locator('.player[aria-label^="G-14"]').waitFor({ timeout: 10000 }); // grid re-renders after the session loads
+  await ev.locator('.player[aria-label^="W-14"]').waitFor({ timeout: 10000 }); // grid re-renders after the session loads
   const codes2 = await ev.locator(".player").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label").split(" ")[0]));
-  assert(codes2.every((c) => /^[GYO]-\d\d$/.test(c)), `session 2 should show Green/Yellow/Orange codes, saw ${codes2.join(" ")}`);
-  assert(codes2.includes("G-14") && codes2.includes("Y-17"), "W-14 should appear as G-14 and B-17 as Y-17");
-  assert(codes2.includes("O-03"), "B-03's secondary colour edit (Orange) reaches the evaluator");
-  assert(codes2.includes("G-12"), "W-12 is present in session 2 (absence is per session)");
-  await ev.locator(".player", { hasText: "14" }).first().click();
+  assert(codes2.length === 11, `11 players dressed for the scrimmage, saw ${codes2.length}: ${codes2.join(" ")}`);
+  assert(!codes2.some((c) => c.endsWith("-17")), "B-17 (on no team) is hidden in the scrimmage");
+  assert(codes2.includes("R-04") && codes2.includes("R-03") && codes2.includes("R-08"), `Team 1 wears Red: ${codes2.join(" ")}`);
+  assert(codes2.includes("W-14") && codes2.includes("W-01") && codes2.includes("W-15") && codes2.includes("W-12"), `Team 2 wears White: ${codes2.join(" ")}`);
+  const chips2 = await ev.locator("#chips .chip").allTextContents();
+  assert(chips2.some((c) => /Red · Team 1/.test(c)) && chips2.some((c) => /White · Team 2/.test(c)), `chips name the teams: ${chips2.join(",")}`);
+  assert(/not dressed/.test(await ev.locator("#progressText").textContent()), "progress mentions not-dressed players");
+  await ev.locator('.player[aria-label^="W-14"]').click();
   await ev.locator("#sheet").waitFor({ state: "visible" });
-  assert((await ev.locator("#sheetNum").textContent()) === "G-14", "sheet shows the worn code");
-  assert(/usually W-14/.test(await ev.locator("#sheetAlt").textContent()), "sheet reminds of the primary code");
+  assert((await ev.locator("#sheetNum").textContent()) === "W-14", "sheet shows the worn code");
+  assert(/Team 2/.test(await ev.locator("#sheetAlt").textContent()), "sheet names the team");
   await ev.click("#sheetClose");
   await ev.selectOption("#sessionSelect", { index: 0 });
   await ev.locator('.player[aria-label^="W-14"]').waitFor({ timeout: 10000 });
@@ -259,14 +292,14 @@ try {
 
   // ------------------------------------------------------------------ Admin: delete is refused once a player has scores
   await admin.click("#refreshBtn");
-  await admin.locator("#msg", { hasText: "Refreshed" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "Refreshed");
   await admin.locator('#playersBody tr[data-player="B-01"] button', { hasText: "Delete" }).click();
-  await admin.locator("#msg", { hasText: "already has scores" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "already has scores");
   log("delete refused for a player with scores");
 
   // ------------------------------------------------------------------ Admin: rankings show 9
   await admin.click("#refreshBtn");
-  await admin.locator("#msg", { hasText: "Refreshed" }).waitFor({ timeout: 20000 });
+  await expectMsg(admin, "Refreshed");
   await admin.click('.tab[data-tab="rankings"]');
   await admin.selectOption("#rSession", { index: 1 });
   const rows = admin.locator("#rankBody tr");
@@ -276,7 +309,9 @@ try {
   const total = await rows.count();
   assert(total === 12, `expected 12 rows, saw ${total}`);
   const w12 = admin.locator('#rankBody tr', { hasText: "W-12" });
-  assert((await w12.locator("td").nth(2).textContent()) === "1/2", "W-12 attended 1 of 2 sessions");
+  assert((await w12.locator("td").nth(2).textContent()) === "1/2", "W-12 attended 1 of 2 sessions (absent in 1, on Team 2 in 2)");
+  const b17 = admin.locator('#rankBody tr', { hasText: "B-17" });
+  assert((await b17.locator("td").nth(2).textContent()) === "1/2", "B-17 played 1 of 2 (not dressed for the scrimmage)");
   await admin.check("#rTagged");
   assert((await rows.count()) === 1 && /W-09/.test(await rows.first().textContent()), "AA-only filter shows just W-09");
   await admin.uncheck("#rTagged");

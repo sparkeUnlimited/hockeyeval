@@ -190,6 +190,12 @@ tr.inactive td { opacity: .5; }
 .toolbar select { width: auto; min-width: 140px; }
 input[type=checkbox] { width: 24px; height: 24px; }
 .attend { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; }
+.team { border: 2px solid var(--border); border-radius: var(--radius); padding: .6rem .8rem; margin-bottom: .6rem; background: var(--surface); }
+.team summary { cursor: pointer; font-weight: 700; min-height: 40px; display: flex; align-items: center; gap: .6rem; }
+.team .roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .35rem; margin-top: .5rem; }
+.team .roster label { display: flex; align-items: center; gap: .4rem; min-height: 40px; padding: 0 .4rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-weight: 600; font-size: .95rem; }
+.attend h4 { grid-column: 1 / -1; margin: .4rem 0 0; font-size: 1rem; }
+.attend label.dressed-no { opacity: .45; }
 .attend { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .attend label { display: flex; align-items: center; gap: .5rem; min-height: var(--tap); padding: .3rem .6rem; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); font-weight: 700; flex-wrap: wrap; }
 .attend label .code { min-width: 3.4em; }

@@ -17,9 +17,28 @@ type Tryout {
   sessions: [Session!]!
   players: [Player!]!
   # True when the caller is on this tryout's evaluator list and enabled.
+  # Named groups of players (e.g. "Team 1") reused across scrimmages. A player may be on several teams.
+  teams: [Team!]!
   canEvaluate: Boolean!
   # Admin only: who may score this tryout. Ids only.
   evaluatorAccess: [EvaluatorAccess!]! @aws_auth(cognito_groups: ["admin"])
+}
+
+type Team {
+  id: ID!
+  name: String!            # a label like "Team 1" or "Team Red" — never a person's name
+  players: [ID!]!          # playerNumbers on this team
+}
+
+# Which team plays in a session and what colour it wears. Players on no listed team are not dressed for it.
+type SessionTeam {
+  teamId: ID!
+  colour: String!
+}
+
+input SessionTeamInput {
+  teamId: ID!
+  colour: String!
 }
 
 type EvaluatorAccess {
@@ -36,7 +55,8 @@ type Session {
   order: Int!
   jersey: String!          # primary | secondary: the DEFAULT jersey colour for this session
   absent: [ID!]!           # playerNumbers marked absent for this session (hidden from evaluators, writes rejected)
-  colours: AWSJSON         # per-player overrides for this session: { "W-14": "Red", ... }. Wins over jersey.
+  colours: AWSJSON         # per-player overrides for this session: { "W-14": "Red", ... }. Wins over teams and jersey.
+  teams: [SessionTeam!]!   # scrimmage/game: the teams on the ice and their colours. Empty = everyone plays.
 }
 
 # A player's number never changes. Every player gets two jersey colours at registration; the
@@ -126,6 +146,13 @@ type Mutation {
   # Mark a player present/absent for one session. Absent players are hidden from evaluators for that session
   # and any score for them in that session is rejected, so a missed skate never counts as an evaluation.
   setAttendance(tryoutId: ID!, sessionId: ID!, playerNumber: ID!, present: Boolean!): Session!
+    @aws_auth(cognito_groups: ["admin"])
+  createTeam(tryoutId: ID!, name: String!): Team! @aws_auth(cognito_groups: ["admin"])
+  deleteTeam(tryoutId: ID!, teamId: ID!): ID! @aws_auth(cognito_groups: ["admin"])
+  # Replace a team's roster.
+  setTeamPlayers(tryoutId: ID!, teamId: ID!, players: [ID!]!): Team! @aws_auth(cognito_groups: ["admin"])
+  # Replace the teams playing in a session (with colours). Empty list = no teams, everyone plays.
+  setSessionTeams(tryoutId: ID!, sessionId: ID!, teams: [SessionTeamInput!]!): Session!
     @aws_auth(cognito_groups: ["admin"])
   # Replace the session's per-player jersey colours ({ playerNumber: colour }). Empty object clears all overrides.
   setSessionColours(tryoutId: ID!, sessionId: ID!, colours: AWSJSON!): Session!

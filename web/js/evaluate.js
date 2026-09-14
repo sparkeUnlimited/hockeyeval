@@ -3,7 +3,7 @@ import { requireAuth, signOut, store } from "./auth.js";
 import {
   gql, enqueueEvaluation, subscribe, flush, startSyncLoop, setCurrentUser, onSynced, retryFailed, failedEntries,
   registerServiceWorker, NetworkError, AuthError, Q_CURRENT_TRYOUT, Q_MY_EVALS, normalizeTryout, parseScores, swatchColour,
-  wornColour, wornCode, isAbsent,
+  wornColour, wornCode, isAbsent, isPlaying, teamNameOf,
 } from "./api.js";
 import { SCALE, TIERS, criteriaFor, NOTES_MAX } from "./criteria.js";
 
@@ -56,7 +56,7 @@ const canEvaluate = () => state.tryout?.canEvaluate === true;
 /** Scoring is blocked when the tryout is closed or the caller is not an enabled evaluator on it. */
 const isReadOnly = () => isClosed() || !canEvaluate();
 // Players who are active AND not marked absent for the selected session: a missed skate never counts.
-const activePlayers = () => (state.tryout?.players || []).filter((p) => p.active && !isAbsent(currentSession(), p));
+const activePlayers = () => (state.tryout?.players || []).filter((p) => p.active && isPlaying(currentSession(), p));
 const hasContent = (e) => !!e && (Object.keys(e.scores || {}).length > 0 || !!e.tier || !!(e.notes && e.notes.trim()));
 
 // ----------------------------------------------------------------------------- Loading
@@ -165,7 +165,12 @@ function renderChips() {
     return c;
   };
   chips.append(mk("All", !state.filter.colour && !state.filter.position, () => { state.filter = { colour: null, position: null }; renderChips(); renderGrid(); }));
-  for (const c of colours) chips.append(mk(c, state.filter.colour === c, () => { state.filter.colour = state.filter.colour === c ? null : c; renderChips(); renderGrid(); }, c));
+  for (const c of colours) {
+    // In a team session, label the chip with the team wearing that colour.
+    const teamNames = [...new Set(activePlayers().filter((p) => colourOf(p) === c).map((p) => teamNameOf(currentSession(), p)).filter(Boolean))];
+    const label = teamNames.length ? `${c} · ${teamNames.join("/")}` : c;
+    chips.append(mk(label, state.filter.colour === c, () => { state.filter.colour = state.filter.colour === c ? null : c; renderChips(); renderGrid(); }, c));
+  }
   for (const p of ["F", "D", "G"]) chips.append(mk(p, state.filter.position === p, () => { state.filter.position = state.filter.position === p ? null : p; renderChips(); renderGrid(); }));
 }
 
@@ -206,7 +211,8 @@ function renderProgress() {
   const all = activePlayers();
   const scored = all.filter((p) => hasContent(state.evals[p.playerNumber])).length;
   const absent = (state.tryout?.players || []).filter((p) => p.active && isAbsent(currentSession(), p)).length;
-  $("progressText").textContent = `${scored} of ${all.length} scored this session${absent ? ` · ${absent} absent` : ""}`;
+  const notDressed = (state.tryout?.players || []).filter((p) => p.active && !isAbsent(currentSession(), p) && !isPlaying(currentSession(), p)).length;
+  $("progressText").textContent = `${scored} of ${all.length} scored this session${absent ? ` · ${absent} absent` : ""}${notDressed ? ` · ${notDressed} not dressed` : ""}`;
   $("progressBar").style.width = all.length ? `${(scored / all.length) * 100}%` : "0";
 }
 
@@ -225,8 +231,9 @@ function openSheet(playerNumber) {
   tagEl.hidden = !p.tag; tagEl.textContent = p.tag || "";
   // When this session uses the secondary jersey, remind the evaluator of the player's usual code.
   const alt = $("sheetAlt");
-  alt.hidden = codeOf(p) === p.playerNumber;
-  alt.textContent = `${colourOf(p)} ${p.number} this session · usually ${p.playerNumber} (${p.colour})`;
+  const team = teamNameOf(currentSession(), p);
+  alt.hidden = codeOf(p) === p.playerNumber && !team;
+  alt.textContent = `${team ? `${team} · ` : ""}${colourOf(p)} ${p.number} this session · usually ${p.playerNumber} (${p.colour})`;
   $("sheet").classList.toggle("readonly", isReadOnly());
 
   const crit = $("criteria");

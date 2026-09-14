@@ -1,7 +1,7 @@
 // Convenor dashboard: setup, rankings, per-evaluator view, CSV export, close.
 // Everything here is by player number only. There is no name field anywhere and no place to type one.
 import { requireAuth, signOut } from "./auth.js";
-import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, wornColour, isAbsent, AuthError } from "./api.js";
+import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, wornColour, isAbsent, isPlaying, teamNameOf, deriveTeams, AuthError } from "./api.js";
 import { CRITERIA, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
 registerServiceWorker();
@@ -26,6 +26,7 @@ const state = {
   tryout: null,
   evals: [],
   evaluators: [],
+  openTeam: null,
   rank: { sessionId: "all", position: "all", equalWeights: false, normalize: false, taggedOnly: false, sortKey: "overall", sortDir: "desc" },
   attendSessionId: null,
   view: { evaluatorId: null, sessionId: "all" },
@@ -135,7 +136,7 @@ function computeRankings() {
     const crit = {};
     for (const c of criteriaFor(p.position)) crit[c.key] = critSums[c.key] ? critSums[c.key].sum / critSums[c.key].n : null;
     const perEvalMeans = [...perEvaluator.values()].map(mean);
-    const attended = sessions.filter((s) => !isAbsent(s, p)).length;
+    const attended = sessions.filter((s) => isPlaying(s, p)).length;
     rows.push({
       playerNumber: p.playerNumber, colour: p.colour, number: p.number, position: p.position, tag: p.tag || null,
       n, crit, overall: mean(overalls), tiers, spread: stddev(perEvalMeans), evaluators: perEvaluator.size,
@@ -183,13 +184,15 @@ function renderSetup() {
       ...["skills", "scrimmage", "game"].map((x) => el("option", { value: x, selected: x === s.type }, x)));
     typeSel.addEventListener("change", () => updateSession(s, { type: typeSel.value }));
     sb.append(el("tr", { "data-session": s.id }, el("td", {}, String(i + 1)), el("td", {}, labelIn), el("td", {}, dateIn), el("td", {}, typeSel),
+      el("td", {}, sessionTeamsCell(s)),
       el("td", {}, el("span", { class: `pill ${clash.length ? "bad" : ""}` }, s.jersey === "secondary" ? "secondary" : "primary"),
         Object.keys(s.colours || {}).length ? el("span", { class: "small muted", style: "margin-left:.4rem" }, `+${Object.keys(s.colours).length} set per player`) : null,
         clash.length ? el("span", { class: "small error", style: "margin-left:.4rem" }, `duplicate codes: ${clash.join(", ")}`) : null),
       el("td", {}, el("button", { class: "btn sm", type: "button", onclick: () => setJersey(s, s.jersey === "secondary" ? "primary" : "secondary") },
         s.jersey === "secondary" ? "Switch to primary" : "Switch to secondary"))));
   });
-  if (!t.sessions.length) sb.append(el("tr", {}, el("td", { colspan: 6, class: "muted" }, "No sessions yet.")));
+  if (!t.sessions.length) sb.append(el("tr", {}, el("td", { colspan: 7, class: "muted" }, "No sessions yet.")));
+  renderTeams();
 
   // Colour dropdowns on the add-one form: default White / Red, "Other…" to add a colour.
   fillColourSelect($("pColour"), { otherInput: $("pColourOther") });
@@ -291,7 +294,7 @@ $("sType").addEventListener("change", () => { $("sJersey").value = $("sType").va
 async function updateSession(session, patch, okText) {
   await run(async () => {
     const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $label: String, $date: AWSDate, $type: String, $jersey: String) {
-      updateSession(tryoutId: $tryoutId, sessionId: $sessionId, label: $label, date: $date, type: $type, jersey: $jersey) { id label date type order jersey absent colours } }`,
+      updateSession(tryoutId: $tryoutId, sessionId: $sessionId, label: $label, date: $date, type: $type, jersey: $jersey) { id label date type order jersey absent colours teams { teamId colour } } }`,
       { tryoutId: state.tryout.id, sessionId: session.id, label: patch.label ?? null, date: patch.date ?? null, type: patch.type ?? null, jersey: patch.jersey ?? null });
     Object.assign(session, data.updateSession);
     normalizeTryout(state.tryout); // also parses the colours map
@@ -468,9 +471,19 @@ function renderAttendance() {
   const players = t.players.filter((p) => p.active);
   let absent = 0;
   const overrides = Object.keys(session.colours || {}).length;
-  for (const p of players) {
+  // Team sessions: group the grid by team, then list who is not dressed.
+  const hasTeams = !!session.teamColours;
+  const groups = hasTeams
+    ? [...session.teams.map((st) => ({ title: `${t.teams.find((x) => x.id === st.teamId)?.name || "Team"} · ${st.colour}`, colour: st.colour, players: players.filter((p) => teamNameOf(session, p) === (t.teams.find((x) => x.id === st.teamId)?.name)) })),
+       { title: "Not dressed for this session", players: players.filter((p) => !session.teamColours[p.playerNumber]), notDressed: true }]
+    : [{ title: null, players }];
+  $("aTeams").hidden = !hasTeams;
+  $("aTeams").textContent = hasTeams ? `Team session: ${session.teams.map((st) => `${t.teams.find((x) => x.id === st.teamId)?.name || "?"} in ${st.colour}`).join(" vs ")}. Change teams in the Sessions table above.` : "";
+  for (const g of groups) {
+  if (g.title) grid.append(el("h4", {}, g.title, g.notDressed ? el("span", { class: "muted small", style: "font-weight:400;margin-left:.5rem" }, "(hidden from evaluators)") : null));
+  for (const p of g.players) {
     const away = isAbsent(session, p);
-    if (away) absent += 1;
+    if (away && !g.notDressed) absent += 1;
     const box = el("input", { type: "checkbox", "aria-label": `${p.playerNumber} present` });
     box.checked = !away;
     box.addEventListener("change", () => setAttendance(session, p, box.checked));
@@ -485,13 +498,21 @@ function renderAttendance() {
     const commitOther = () => { const v = cOther.value.trim(); if (v) setSessionColours(session, { ...(session.colours || {}), [p.playerNumber]: v }); };
     cOther.addEventListener("change", commitOther);
     cOther.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitOther(); } });
+    if (g.notDressed) {
+      grid.append(el("label", { class: "dressed-no", "data-attend": p.playerNumber },
+        el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("span", { class: "code" }, p.playerNumber),
+        el("span", { class: "muted small" }, p.position), p.tag ? el("span", { class: "tagpill" }, p.tag) : null));
+      continue;
+    }
     grid.append(el("label", { class: away ? "absent" : "", "data-attend": p.playerNumber }, box,
       el("span", { class: "swatch", style: `background:${swatchColour(wornColour(session, p))}` }),
       el("span", { class: "code" }, wornCode(session, p)),
       el("span", { class: "muted small" }, `${p.position}${p.playerNumber !== wornCode(session, p) ? ` · ${p.playerNumber}` : ""}`),
       p.tag ? el("span", { class: "tagpill" }, p.tag) : null, cSel, cOther));
   }
-  $("aSummary").textContent = `${players.length - absent} present · ${absent} absent · ${overrides ? `${overrides} colour${overrides === 1 ? "" : "s"} set for this session` : `default ${session.jersey} jerseys`}`;
+  }
+  const dressed = players.filter((p) => !hasTeams || session.teamColours[p.playerNumber]).length;
+  $("aSummary").textContent = `${dressed - absent} present · ${absent} absent${hasTeams ? ` · ${players.length - dressed} not dressed` : ""} · ${overrides ? `${overrides} colour${overrides === 1 ? "" : "s"} set per player` : hasTeams ? "team colours" : `default ${session.jersey} jerseys`}`;
   const clash = jerseyClashes(session);
   $("aClash").hidden = !clash.length;
   $("aClash").textContent = clash.length ? `Two players would show as the same code: ${clash.join(", ")}. Give one of them a different colour.` : "";
@@ -505,13 +526,109 @@ $("bulkApply").addEventListener("click", () => {
   if (!colour) { msg("Choose a colour first.", "bad"); return; }
   const who = $("bulkWho").value;
   const next = { ...(session.colours || {}) };
-  for (const p of state.tryout.players.filter((x) => x.active && (who === "all" || x.position === who))) next[p.playerNumber] = colour;
+  // Applies to everyone dressed for the session (absent players included, so a late arrival is right), not to players on no team.
+  const dressed = (x) => !session.teamColours || !!session.teamColours[x.playerNumber];
+  for (const p of state.tryout.players.filter((x) => x.active && dressed(x) && (who === "all" || x.position === who))) next[p.playerNumber] = colour;
   setSessionColours(session, next, `${who === "all" ? "Everyone" : who === "F" ? "Forwards" : who === "D" ? "Defence" : "Goalies"} set to ${colour} for ${session.label}.`);
 });
 $("bulkReset").addEventListener("click", () => {
   const session = state.tryout?.sessions.find((s) => s.id === state.attendSessionId);
   if (session) setSessionColours(session, {}, `${session.label} back to default ${session.jersey} jerseys.`);
 });
+
+// ----------------------------------------------------------------------------- Teams
+function renderTeams() {
+  const t = state.tryout;
+  $("teamsCard").hidden = !t;
+  if (!t) return;
+  const list = $("teamsList"); list.innerHTML = "";
+  const players = t.players.filter((p) => p.active);
+  for (const team of t.teams) {
+    const roster = el("div", { class: "roster" });
+    for (const p of players) {
+      const box = el("input", { type: "checkbox", "aria-label": `${p.playerNumber} on ${team.name}` });
+      box.checked = team.players.includes(p.playerNumber);
+      box.addEventListener("change", () => {
+        const next = box.checked ? [...team.players, p.playerNumber] : team.players.filter((x) => x !== p.playerNumber);
+        setTeamPlayers(team, next);
+      });
+      roster.append(el("label", {}, box, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), p.playerNumber, el("span", { class: "muted small" }, p.position)));
+    }
+    const det = el("details", { class: "team", "data-team": team.id, open: state.openTeam === team.id ? "" : null },
+      el("summary", {}, team.name, el("span", { class: "pill" }, `${team.players.length} players`),
+        el("span", { class: "muted small", style: "font-weight:400" }, team.players.filter((pn) => t.players.find((p) => p.playerNumber === pn)?.position === "G").length + " G"),
+        el("button", { class: "btn sm danger", type: "button", style: "margin-left:auto", onclick: (ev) => { ev.preventDefault(); deleteTeam(team); } }, "Delete team")),
+      roster);
+    det.addEventListener("toggle", () => { if (det.open) state.openTeam = team.id; else if (state.openTeam === team.id) state.openTeam = null; });
+    list.append(det);
+  }
+  if (!t.teams.length) list.append(el("p", { class: "muted" }, "No teams yet. Create one, then tick the players on it."));
+}
+
+$("teamForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  await run(async () => {
+    const data = await gql(`mutation($tryoutId: ID!, $name: String!) { createTeam(tryoutId: $tryoutId, name: $name) { id name players } }`, { tryoutId: state.tryout.id, name: $("teamName").value.trim() });
+    $("teamName").value = "";
+    state.openTeam = data.createTeam.id;
+    await loadAll();
+  }, "Team created. Tick the players on it.");
+});
+
+async function setTeamPlayers(team, players) {
+  await run(async () => {
+    const data = await gql(`mutation($tryoutId: ID!, $teamId: ID!, $players: [ID!]!) { setTeamPlayers(tryoutId: $tryoutId, teamId: $teamId, players: $players) { id name players } }`,
+      { tryoutId: state.tryout.id, teamId: team.id, players });
+    team.players = data.setTeamPlayers.players;
+    for (const s of state.tryout.sessions) deriveTeams(s, state.tryout.teams);
+    renderAll();
+  }, `${team.name}: ${players.length} players.`);
+}
+
+async function deleteTeam(team) {
+  if (!confirm(`Delete ${team.name}? Sessions using it will lose it.`)) return;
+  await run(async () => {
+    await gql(`mutation($tryoutId: ID!, $teamId: ID!) { deleteTeam(tryoutId: $tryoutId, teamId: $teamId) }`, { tryoutId: state.tryout.id, teamId: team.id });
+    await loadAll();
+  }, `${team.name} deleted.`);
+}
+
+/** Cell in the Sessions table: teams on the ice with colours, plus an add row (scrimmage/game only). */
+function sessionTeamsCell(s) {
+  const t = state.tryout;
+  const wrap = el("div", { class: "row", style: "flex-wrap:wrap;gap:.3rem;align-items:center;min-width:280px" });
+  for (const st of s.teams || []) {
+    const team = t.teams.find((x) => x.id === st.teamId);
+    wrap.append(el("span", { class: "pill" }, el("span", { class: "swatch", style: `background:${swatchColour(st.colour)}` }), `${team?.name || "?"} · ${st.colour} `,
+      el("button", { class: "btn sm ghost", type: "button", style: "min-height:28px;padding:0 .3rem", "aria-label": `Remove ${team?.name || "team"} from ${s.label}`,
+        onclick: () => setSessionTeams(s, s.teams.filter((x) => x.teamId !== st.teamId)) }, "✕")));
+  }
+  if (s.type === "skills") { if (!s.teams?.length) wrap.append(el("span", { class: "muted small" }, "skills: everyone")); return wrap; }
+  const available = t.teams.filter((x) => !(s.teams || []).some((st) => st.teamId === x.id));
+  if (!t.teams.length) { wrap.append(el("span", { class: "muted small" }, "create teams below")); return wrap; }
+  if (!available.length) return wrap;
+  const teamSel = el("select", { class: "sm", "aria-label": `Add team to ${s.label}` }, ...available.map((x) => el("option", { value: x.id }, x.name)));
+  const colSel = el("select", { class: "sm colour-select", "aria-label": `Colour for the team added to ${s.label}` });
+  fillColourSelect(colSel, { value: (s.teams || []).length ? "Red" : "White" });
+  const add = el("button", { class: "btn sm", type: "button", onclick: () => {
+    if (colSel.value === OTHER) { msg("Pick a colour from the list (add new colours in the Attendance & jerseys section).", "bad"); return; }
+    setSessionTeams(s, [...(s.teams || []), { teamId: teamSel.value, colour: colSel.value }]);
+  } }, "+ team");
+  wrap.append(teamSel, colSel, add);
+  return wrap;
+}
+
+async function setSessionTeams(session, teams, okText) {
+  await run(async () => {
+    const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $teams: [SessionTeamInput!]!) {
+      setSessionTeams(tryoutId: $tryoutId, sessionId: $sessionId, teams: $teams) { id teams { teamId colour } } }`,
+      { tryoutId: state.tryout.id, sessionId: session.id, teams: teams.map((t) => ({ teamId: t.teamId, colour: t.colour })) });
+    session.teams = data.setSessionTeams.teams;
+    deriveTeams(session, state.tryout.teams);
+    state.attendSessionId = session.id;
+    renderAll();
+  }, okText || (teams.length ? `${session.label}: ${teams.map((t) => `${state.tryout.teams.find((x) => x.id === t.teamId)?.name || "?"} in ${t.colour}`).join(" vs ")}.` : `${session.label}: no teams, everyone plays.`));
+}
 
 async function setSessionColours(session, colours, okText) {
   await run(async () => {

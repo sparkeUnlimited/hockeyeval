@@ -13,6 +13,7 @@ export const tryoutPK = (tryoutId) => `TRYOUT#${tryoutId}`;
 export const sessionSK = (sessionId) => `SESSION#${sessionId}`;
 export const playerSK = (playerNumber) => `PLAYER#${playerNumber}`;
 export const evaluatorSK = (sub) => `EVALUATOR#${sub}`;
+export const teamSK = (teamId) => `TEAM#${teamId}`;
 export const evalPK = (tryoutId, sessionId, sub) => `EVAL#${tryoutId}#${sessionId}#${sub}`;
 export const evalGSI1PK = (tryoutId, playerNumber) => `TRYOUT#${tryoutId}#PLAYER#${playerNumber}`;
 export const evalGSI1SK = (sessionId, sub) => `SESSION#${sessionId}#EVAL#${sub}`;
@@ -25,6 +26,7 @@ const PLAYER_NUMBER_RE = "^[A-Z]-[0-9]{2,3}$";
 const DATE_RE = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$";
 const COLOUR_RE = "^[A-Za-z]{2,20}$";
 const TAG_RE = "^[A-Za-z0-9 +-]{1,12}$";
+const TEAM_NAME_RE = "^[A-Za-z0-9 #&+-]{1,30}$";
 const SESSION_TYPES = ["skills", "scrimmage", "game"];
 const JERSEYS = ["primary", "secondary"];
 const POSITIONS = ["F", "D", "G"];
@@ -83,6 +85,45 @@ export function requireJersey(value) {
 export function optionalColour(value) {
   if (value === null || value === undefined || value === "") return null;
   return requireColour(value);
+}
+
+export function requireTeamName(value) {
+  if (typeof value !== "string") util.error("Missing team name", "BadRequest");
+  const t = value.trim();
+  if (!util.matches(TEAM_NAME_RE, t)) util.error("Team name must be 1-30 letters, digits, spaces, # & + -", "BadRequest");
+  return t;
+}
+
+/** A list of player codes, de-duplicated, max 200. */
+export function requirePlayerList(value) {
+  if (!Array.isArray(value)) util.error("players must be a list", "BadRequest");
+  if (value.length > 200) util.error("Too many players", "BadRequest");
+  const seen = {};
+  const out = [];
+  for (const v of value) {
+    requirePlayerNumber(v);
+    if (!seen[v]) { seen[v] = true; out.push(v); }
+  }
+  return out;
+}
+
+/** [{ teamId, colour }] for a session, max 8 teams, unique ids, colours validated. */
+export function requireSessionTeams(value) {
+  if (!Array.isArray(value)) util.error("teams must be a list", "BadRequest");
+  if (value.length > 8) util.error("At most 8 teams per session", "BadRequest");
+  const seen = {};
+  const out = [];
+  for (const t of value) {
+    const teamId = requireId(t && t.teamId, "teamId");
+    if (seen[teamId]) util.error(`Team ${teamId} listed twice`, "BadRequest");
+    seen[teamId] = true;
+    out.push({ teamId, colour: requireColour(t.colour) });
+  }
+  return out;
+}
+
+export function toTeam(item) {
+  return { id: item.teamId, name: item.name, players: item.players || [] };
 }
 
 /** { playerNumber: colour } map for a session. Keys must be player codes, values colour names. Max 200. */
@@ -190,7 +231,7 @@ export function toPlayer(item) {
 export function toSession(item) {
   return {
     id: item.sessionId, label: item.label, date: item.date, type: item.type, order: item.order,
-    jersey: item.jersey || "primary", absent: item.absent || [], colours: item.colours || {},
+    jersey: item.jersey || "primary", absent: item.absent || [], colours: item.colours || {}, teams: item.teams || [],
   };
 }
 
@@ -206,12 +247,14 @@ export function assembleTryout(tryoutId, items, sub) {
   let meta = null;
   const sessions = [];
   const players = [];
+  const teams = [];
   const evaluatorAccess = [];
   let canEvaluate = false;
   for (const it of items) {
     if (it.SK === "META") meta = it;
     else if (it.SK.startsWith("SESSION#")) sessions.push(toSession(it));
     else if (it.SK.startsWith("PLAYER#")) players.push(toPlayer(it));
+    else if (it.SK.startsWith("TEAM#")) teams.push(toTeam(it));
     else if (it.SK.startsWith("EVALUATOR#")) {
       evaluatorAccess.push(toEvaluatorAccess(it));
       if (sub && it.evaluatorId === sub && it.enabled !== false) canEvaluate = true;
@@ -227,6 +270,7 @@ export function assembleTryout(tryoutId, items, sub) {
     createdAt: meta.createdAt || null,
     sessions,
     players,
+    teams,
     canEvaluate,
     evaluatorAccess,
   };

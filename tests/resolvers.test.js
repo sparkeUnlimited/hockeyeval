@@ -74,6 +74,17 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
     assert.equal(c.stash.position, "D", "absent list for other players does not block");
   });
 
+  test("step 1 stashes the session's teams for the team check", () => {
+    const r = rows("open");
+    r.data.TryoutTable[1].teams = [{ teamId: "team1", colour: "Red" }];
+    const c = ctx({ args, result: r });
+    mod.response(c);
+    assert.deepEqual(c.stash.sessionTeams, [{ teamId: "team1", colour: "Red" }]);
+    const none = ctx({ args, result: rows("open") });
+    mod.response(none);
+    assert.deepEqual(none.stash.sessionTeams, []);
+  });
+
   test("closed tryout is rejected", () => {
     throwsType(() => mod.response(ctx({ args, result: rows("closed") })), "TryoutClosed", /closed/i);
   });
@@ -99,6 +110,72 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
     throwsType(() => mod.response(ctx({ args, result: noSession })), "NotFound", /Session/);
     const noPlayer = rows(); noPlayer.data.TryoutTable.splice(2, 1);
     throwsType(() => mod.response(ctx({ args, result: noPlayer })), "NotFound", /Player/);
+  });
+});
+
+describe("Mutation.upsertEvaluation step 1b (team check)", () => {
+  let mod;
+  before(async () => { mod = await loadResolver("Mutation.upsertEvaluation.1b.checkTeam.js"); });
+  const args = { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", scores: {}, clientId: "c-1" };
+
+  test("no teams on the session: skipped entirely (everyone plays)", () => {
+    assert.throws(() => mod.request(ctx({ args, stash: { sessionTeams: [] } })), (e) => e instanceof EarlyReturn);
+    assert.throws(() => mod.request(ctx({ args, stash: {} })), (e) => e instanceof EarlyReturn);
+  });
+
+  test("with teams: fetches the rosters live and requires membership", () => {
+    const req = mod.request(ctx({ args, stash: { sessionTeams: [{ teamId: "t1", colour: "Red" }, { teamId: "t2", colour: "White" }] } }));
+    assert.equal(req.operation, "BatchGetItem");
+    assert.deepEqual(req.tables.TryoutTable.keys.map(fromMapValues), [
+      { PK: `TRYOUT#${TRYOUT}`, SK: "TEAM#t1" }, { PK: `TRYOUT#${TRYOUT}`, SK: "TEAM#t2" },
+    ]);
+    const onTeam = { data: { TryoutTable: [{ SK: "TEAM#t1", players: ["B-07"] }, { SK: "TEAM#t2", players: ["W-14", "W-04"] }] } };
+    assert.equal(mod.response(ctx({ args, result: onTeam })), true);
+    const notOnTeam = { data: { TryoutTable: [{ SK: "TEAM#t1", players: ["B-07"] }, null] } };
+    throwsType(() => mod.response(ctx({ args, result: notOnTeam })), "NotPlaying", /not on a team/);
+  });
+});
+
+describe("teams", () => {
+  test("createTeam validates the name and starts with an empty roster", async () => {
+    const mod = await loadResolver("Mutation.createTeam.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, name: " Team 1 " } }));
+    assert.equal(req.operation, "PutItem");
+    const attrs = fromMapValues(req.attributeValues);
+    assert.equal(attrs.name, "Team 1");
+    assert.deepEqual(attrs.players, []);
+    assert.match(fromMapValues(req.key).SK, /^TEAM#/);
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, name: "Team <b>" } })), "BadRequest", /Team name/);
+    assert.deepEqual(mod.response(ctx({ result: { teamId: "t1", name: "Team 1" } })), { id: "t1", name: "Team 1", players: [] });
+  });
+
+  test("setTeamPlayers replaces the roster, de-duplicated and validated", async () => {
+    const mod = await loadResolver("Mutation.setTeamPlayers.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, teamId: "t1", players: ["W-14", "B-07", "W-14"] } }));
+    assert.equal(req.update.expression, "SET #players = :players");
+    assert.deepEqual(fromMapValues(req.update.expressionValues), { ":players": ["W-14", "B-07"] });
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, teamId: "t1", players: ["Smith-1"] } })), "BadRequest", /playerNumber/);
+  });
+
+  test("setSessionTeams validates ids/colours, rejects duplicates, empty clears", async () => {
+    const mod = await loadResolver("Mutation.setSessionTeams.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1", colour: "red" }, { teamId: "t2", colour: "White" }] } }));
+    assert.deepEqual(fromMapValues(req.update.expressionValues), { ":teams": [{ teamId: "t1", colour: "Red" }, { teamId: "t2", colour: "White" }] });
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1", colour: "Red" }, { teamId: "t1", colour: "White" }] } })), "BadRequest", /twice/);
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1", colour: "R3d" }] } })), "BadRequest", /colour/);
+    const empty = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [] } }));
+    assert.deepEqual(fromMapValues(empty.update.expressionValues), { ":teams": [] });
+    const out = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "scrimmage", order: 2, teams: [{ teamId: "t1", colour: "Red" }] } }));
+    assert.deepEqual(out.teams, [{ teamId: "t1", colour: "Red" }]);
+  });
+
+  test("getTryout includes teams", async () => {
+    const mod = await loadResolver("Fn.getTryout.js");
+    const out = mod.response(ctx({ stash: { tryoutId: TRYOUT }, result: { items: [
+      { SK: "META", name: "n", season: "s", status: "open" },
+      { SK: "TEAM#t1", teamId: "t1", name: "Team 1", players: ["W-14"] },
+    ] } }));
+    assert.deepEqual(out.teams, [{ id: "t1", name: "Team 1", players: ["W-14"] }]);
   });
 });
 
@@ -233,6 +310,10 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.updatePlayer.js", { tryoutId: TRYOUT, playerNumber: "W-14", position: "D" }],
       ["Mutation.setAttendance.js", { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: false }],
       ["Mutation.setSessionColours.js", { tryoutId: TRYOUT, sessionId: SESSION, colours: { "W-14": "Red" } }],
+      ["Mutation.createTeam.js", { tryoutId: TRYOUT, name: "Team 1" }],
+      ["Mutation.deleteTeam.js", { tryoutId: TRYOUT, teamId: "team1" }],
+      ["Mutation.setTeamPlayers.js", { tryoutId: TRYOUT, teamId: "team1", players: ["W-14"] }],
+      ["Mutation.setSessionTeams.js", { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "team1", colour: "Red" }] }],
       ["Mutation.deletePlayer.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.deletePlayer.2.delete.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],

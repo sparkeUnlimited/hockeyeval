@@ -236,15 +236,17 @@ export function registerServiceWorker() {
 // ----------------------------------------------------------------------------- Queries used by both screens
 export const Q_CURRENT_TRYOUT = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order jersey absent colours }
+  sessions { id label date type order jersey absent colours teams { teamId colour } }
   players { playerNumber colour colour2 number position active tag }
+  teams { id name players }
 } }`;
 
 /** Admin variant: also lists who may score this tryout (admin-only field). */
 export const Q_CURRENT_TRYOUT_ADMIN = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order jersey absent colours }
+  sessions { id label date type order jersey absent colours teams { teamId colour } }
   players { playerNumber colour colour2 number position active tag }
+  teams { id name players }
   evaluatorAccess { evaluatorId enabled updatedAt }
 } }`;
 
@@ -256,7 +258,11 @@ export const Q_MY_EVALS = `query My($tryoutId: ID!, $sessionId: ID!) {
 export function normalizeTryout(t) {
   if (!t) return t;
   t.sessions = [...(t.sessions || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.order - b.order));
-  for (const s of t.sessions) s.colours = parseScores(s.colours); // AWSJSON -> object
+  t.teams = [...(t.teams || [])].sort((a, b) => a.name.localeCompare(b.name));
+  for (const s of t.sessions) {
+    s.colours = parseScores(s.colours); // AWSJSON -> object
+    deriveTeams(s, t.teams);
+  }
   t.players = [...(t.players || [])].sort((a, b) => (a.colour < b.colour ? -1 : a.colour > b.colour ? 1 : a.number - b.number));
   return t;
 }
@@ -291,6 +297,40 @@ export function isAbsent(session, player) {
 }
 
 /**
+ * From a session's team list and the tryout's rosters, derive who is dressed and in what colour.
+ * Attached to the session as `teamColours` ({ playerNumber: colour }) and `teamOf` ({ playerNumber: teamName }).
+ * A session with no teams has both undefined: everyone plays.
+ */
+export function deriveTeams(session, teams) {
+  session.teams = session.teams || [];
+  if (!session.teams.length) { session.teamColours = undefined; session.teamOf = undefined; return session; }
+  const byId = new Map((teams || []).map((t) => [t.id, t]));
+  session.teamColours = {};
+  session.teamOf = {};
+  for (const st of session.teams) {
+    const team = byId.get(st.teamId);
+    if (!team) continue;
+    for (const pn of team.players) {
+      if (!(pn in session.teamColours)) { session.teamColours[pn] = st.colour; session.teamOf[pn] = team.name; }
+    }
+  }
+  return session;
+}
+
+/** True when the player is dressed for the session: on one of its teams (or the session has no teams) and not absent. */
+export function isPlaying(session, player) {
+  if (!session) return true;
+  if (isAbsent(session, player)) return false;
+  if (session.teamColours && !(player.playerNumber in session.teamColours)) return false;
+  return true;
+}
+
+/** Team name a player is on for this session, or null. */
+export function teamNameOf(session, player) {
+  return session?.teamOf?.[player.playerNumber] || null;
+}
+
+/**
  * Jersey colour a player wears in a session: the per-session assignment when the convenor set one
  * (skills: forwards one colour, defence another; scrimmage: team colours), otherwise the session's
  * default jersey set (primary or secondary).
@@ -298,6 +338,8 @@ export function isAbsent(session, player) {
 export function wornColour(session, player) {
   const override = session?.colours && session.colours[player.playerNumber];
   if (override) return override;
+  const team = session?.teamColours && session.teamColours[player.playerNumber];
+  if (team) return team;
   return session?.jersey === "secondary" && player.colour2 ? player.colour2 : player.colour;
 }
 

@@ -48,5 +48,7 @@ export function response(ctx) {
   // A missed skate must never become an evaluation.
   if (session.absent && session.absent.includes(player.playerNumber)) util.error("Player is marked absent for this session", "Absent");
   ctx.stash.position = player.position;
+  // Team sessions (scrimmage/game with teams set): step 1b checks the player is dressed for one of them.
+  ctx.stash.sessionTeams = session.teams || [];
   return { position: player.position };
 }

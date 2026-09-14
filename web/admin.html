@@ -49,7 +49,7 @@
     <div class="card" id="sessionsCard">
       <h2>Sessions (ice times)</h2>
       <p class="small muted">Label, date and type can be changed right in the table; they save as soon as you leave the field. Each session says which of the two jersey colours players wear. Skills sessions normally use the primary colour; scrimmages often use the secondary one. Evaluators see the colour worn that session; scores always stay with the player.</p>
-      <div class="table-wrap" style="margin-bottom:.75rem"><table><thead><tr><th>#</th><th>Label</th><th>Date</th><th>Type</th><th>Jerseys</th><th></th></tr></thead><tbody id="sessionsBody"></tbody></table></div>
+      <div class="table-wrap" style="margin-bottom:.75rem"><table><thead><tr><th>#</th><th>Label</th><th>Date</th><th>Type</th><th>Teams on the ice</th><th>Default jerseys</th><th></th></tr></thead><tbody id="sessionsBody"></tbody></table></div>
       <form id="sessionForm" class="row">
         <div class="field grow"><label for="sLabel">Label</label><input id="sLabel" type="text" maxlength="60" placeholder="Skate 2 – Scrimmage" required></div>
         <div class="field"><label for="sDate">Date</label><input id="sDate" type="date" required></div>
@@ -91,8 +91,19 @@
       <div class="table-wrap"><table><thead><tr><th>Player</th><th>Primary</th><th>Secondary</th><th class="num">No.</th><th>Pos</th><th>AA</th><th>Status</th><th></th></tr></thead><tbody id="playersBody"></tbody></table></div>
     </div>
 
+    <div class="card" id="teamsCard">
+      <h2>Teams</h2>
+      <p class="small muted">Teams are groups of players you reuse across scrimmages and games. Make as many as you need (a player can be on more than one), then on each scrimmage session pick which teams are on the ice and what colour each wears. Players not on a playing team are not dressed for that session: evaluators don't see them and cannot score them.</p>
+      <form id="teamForm" class="row" style="margin-bottom:.75rem">
+        <div class="field grow"><label for="teamName">New team</label><input id="teamName" type="text" maxlength="30" placeholder="Team 1" required></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Create team</button></div>
+      </form>
+      <div id="teamsList"></div>
+    </div>
+
     <div class="card" id="attendanceCard">
       <h2>Attendance &amp; jerseys</h2>
+      <p id="aTeams" class="small" hidden></p>
       <p class="small muted">For each ice time: untick anyone who is not on the ice, and set the jersey colour each player is wearing. Absent players disappear from the evaluators' screens for that session only and cannot be scored for it. Colours set here are what evaluators see for that session; the number never changes.</p>
       <div class="toolbar">
         <label>Session <select id="aSession"></select></label>

@@ -245,6 +245,10 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.upsertEvaluation.1.loadContext.js
+        checkTeam:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.upsertEvaluation.1b.checkTeam.js
         putEvaluation:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -289,6 +293,22 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.setSessionColours.js
+        createTeam:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.createTeam.js
+        deleteTeam:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.deleteTeam.js
+        setTeamPlayers:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.setTeamPlayers.js
+        setSessionTeams:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.setSessionTeams.js
         checkNoScores:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -327,7 +347,7 @@ Resources:
           upsertEvaluation:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
-            Pipeline: [loadEvalContext, putEvaluation]
+            Pipeline: [loadEvalContext, checkTeam, putEvaluation]
           createTryout:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
@@ -368,6 +388,22 @@ Resources:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
             Pipeline: [setSessionColours]
+          createTeam:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [createTeam]
+          deleteTeam:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [deleteTeam]
+          setTeamPlayers:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [setTeamPlayers]
+          setSessionTeams:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [setSessionTeams]
           closeTryout:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
