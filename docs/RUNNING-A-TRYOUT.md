@@ -74,7 +74,7 @@ tick the players on it. Every player on the team wears the team colour, whatever
 be changed on the team's row at any time. Make as many teams as you need; a player can be on more than one (the
 day-2 teams and the Wednesday teams can overlap however you like). Then, in the *Sessions* table, each scrimmage
 or game row has a *Teams on the ice* cell: pick a team (its colour is filled in for you; change it only if the
-team is swapping jerseys for that one session), press *+ team*, and do it again for the other team. That is the whole setup
+team is swapping jerseys for that one session), press *+ team*, and do it again for the other team. Every scrimmage and game is full ice with exactly two teams, so once two are on the row the add controls disappear; use the ✕ on a team to swap it out. That is the whole setup
 for a game: "Team 1 in Red vs Team 2 in White". Players who are not on a playing team are **not dressed** for
 that session: evaluators do not see them, cannot score them, and the session does not count in their Sessions
 column. Use the ✕ on a team pill to take it off a session, and *Delete team* under *Teams* when a grouping is no

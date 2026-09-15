@@ -107,10 +107,10 @@ export function requirePlayerList(value) {
   return out;
 }
 
-/** [{ teamId, colour }] for a session, max 8 teams, unique ids, colours validated. */
+/** [{ teamId, colour }] for a session: scrimmages and games are full ice, so at most 2 teams. */
 export function requireSessionTeams(value) {
   if (!Array.isArray(value)) util.error("teams must be a list", "BadRequest");
-  if (value.length > 8) util.error("At most 8 teams per session", "BadRequest");
+  if (value.length > 2) util.error("A session has at most 2 teams", "BadRequest");
   const seen = {};
   const out = [];
   for (const t of value) {

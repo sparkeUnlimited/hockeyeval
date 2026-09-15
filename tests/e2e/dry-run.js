@@ -233,6 +233,7 @@ try {
   assert((await scrim.locator('select[aria-label^="Colour for the team"]').inputValue()) === "White", "Team 2 pre-fills White");
   await scrim.locator("button", { hasText: "+ team" }).click();
   await expectMsg(admin, "Team 1 in Red vs Team 2 in White");
+  assert((await scrim.locator("button", { hasText: "+ team" }).count()) === 0, "no third team can be added: full ice, two teams");
   await admin.selectOption("#aSession", { index: 1 });
   assert(/1 not dressed/.test(await admin.locator("#aSummary").textContent()), "B-17 is not dressed for the scrimmage");
   log("teams created; scrimmage = Team 1 (Red) vs Team 2 (White); B-17 not dressed");

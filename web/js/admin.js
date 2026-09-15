@@ -640,9 +640,12 @@ function sessionTeamsCell(s) {
         onclick: () => setSessionTeams(s, s.teams.filter((x) => x.teamId !== st.teamId)) }, "✕")));
   }
   if (s.type === "skills") { if (!s.teams?.length) wrap.append(el("span", { class: "muted small" }, "skills: everyone")); return wrap; }
+  // Full ice: exactly two teams. Once two are on, the add controls go away (remove one with ✕ to swap it).
+  if ((s.teams || []).length >= 2) return wrap;
   const available = t.teams.filter((x) => !(s.teams || []).some((st) => st.teamId === x.id));
-  if (!t.teams.length) { wrap.append(el("span", { class: "muted small" }, "create teams below")); return wrap; }
+  if (!t.teams.length) { wrap.append(el("span", { class: "muted small" }, "create teams above")); return wrap; }
   if (!available.length) return wrap;
+  if ((s.teams || []).length === 1) wrap.append(el("span", { class: "muted small" }, "vs"));
   const teamSel = el("select", { class: "sm", "aria-label": `Add team to ${s.label}` }, ...available.map((x) => el("option", { value: x.id }, x.name)));
   const colSel = el("select", { class: "sm colour-select", "aria-label": `Colour for the team added to ${s.label}` });
   const teamColour = () => t.teams.find((x) => x.id === teamSel.value)?.colour || "White";
