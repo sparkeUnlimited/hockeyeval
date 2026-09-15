@@ -560,7 +560,7 @@ function renderTeams() {
     }
     // Team colour: dropdown in the summary row, saves on change.
     const cSel = el("select", { class: "colour-select sm", "aria-label": `Colour for ${team.name}`, onclick: (ev) => ev.stopPropagation() });
-    const cOther = el("input", { type: "text", maxlength: "20", placeholder: "New colour", hidden: true, "aria-label": `New colour for ${team.name}`, onclick: (ev) => ev.stopPropagation() });
+    const cOther = el("input", { type: "text", maxlength: "20", placeholder: "New colour", hidden: true, "aria-label": `New colour for ${team.name}`, style: "max-width:140px", onclick: (ev) => ev.stopPropagation() });
     fillColourSelect(cSel, { value: team.colour || "", allowNone: true });
     cSel.addEventListener("change", () => {
       if (cSel.value === OTHER) { cOther.hidden = false; cOther.focus(); return; }
@@ -570,7 +570,7 @@ function renderTeams() {
     cOther.addEventListener("change", commitOther);
     cOther.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitOther(); } });
     // Rename in place: the name is an input in the summary row, saved when you leave it or press Enter.
-    const nameIn = el("input", { type: "text", class: "sm", maxlength: "30", value: team.name, "aria-label": `Name of ${team.name}`, style: "min-width:140px;width:auto",
+    const nameIn = el("input", { type: "text", class: "sm", maxlength: "30", value: team.name, "aria-label": `Name of ${team.name}`,
       onclick: (ev) => ev.stopPropagation() });
     nameIn.addEventListener("change", () => { const v = nameIn.value.trim(); if (v && v !== team.name) updateTeam(team, { name: v }); });
     nameIn.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); nameIn.blur(); } });
@@ -581,7 +581,7 @@ function renderTeams() {
         el("span", { class: "pill pick" }, `${team.players.length} players · pick ▾`),
         el("span", { class: "muted small", style: "font-weight:400" }, team.players.filter((pn) => t.players.find((p) => p.playerNumber === pn)?.position === "G").length + " G"),
         cSel, cOther,
-        el("button", { class: "btn sm danger", type: "button", style: "margin-left:auto", onclick: (ev) => { ev.preventDefault(); deleteTeam(team); } }, "Delete team")),
+        el("button", { class: "btn sm danger", type: "button", onclick: (ev) => { ev.preventDefault(); deleteTeam(team); } }, "Delete team")),
       roster);
     det.addEventListener("toggle", () => { if (det.open) state.openTeam = team.id; else if (state.openTeam === team.id) state.openTeam = null; });
     list.append(det);
