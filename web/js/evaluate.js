@@ -180,6 +180,16 @@ function filteredPlayers() {
     .sort((a, b) => (colourOf(a) < colourOf(b) ? -1 : colourOf(a) > colourOf(b) ? 1 : a.number - b.number));
 }
 
+// Which colour groups this evaluator has folded, remembered per tryout on this phone.
+const foldKey = () => `ui:folded:${state.tryout?.id}`;
+const folded = () => store.get(foldKey(), {});
+function toggleFold(colour) {
+  const f = folded();
+  if (f[colour]) delete f[colour]; else f[colour] = true;
+  store.set(foldKey(), f);
+  renderGrid();
+}
+
 function renderGrid() {
   const grid = $("grid");
   grid.innerHTML = "";
@@ -188,7 +198,31 @@ function renderGrid() {
     grid.append(el("p", { class: "muted", style: "grid-column:1/-1;text-align:center;padding:2rem 0" }, state.tryout ? "No players match this filter." : ""));
     return;
   }
-  for (const p of players) {
+  // One collapsible group per jersey colour (labelled with the team in a scrimmage). Tap the header to fold it.
+  const groups = new Map();
+  for (const p of players) { const c = colourOf(p); if (!groups.has(c)) groups.set(c, []); groups.get(c).push(p); }
+  const f = folded();
+  for (const [colour, list] of groups) {
+    const teams = [...new Set(list.map((p) => teamNameOf(currentSession(), p)).filter(Boolean))];
+    const scored = list.filter((p) => hasContent(state.evals[p.playerNumber])).length;
+    const isFolded = !!f[colour];
+    grid.append(el("button", {
+      class: "group", type: "button", "aria-expanded": String(!isFolded), "data-group": colour,
+      "aria-label": `${colour}${teams.length ? ` ${teams.join("/")}` : ""}, ${scored} of ${list.length} scored, ${isFolded ? "collapsed" : "expanded"}`,
+      onclick: () => toggleFold(colour),
+    },
+      el("span", { class: "sw", style: `background:${swatchColour(colour)}` }),
+      `${colour}${teams.length ? ` · ${teams.join("/")}` : ""}`,
+      el("span", { class: "stat" }, `${scored}/${list.length}`),
+      el("span", { class: "chev", "aria-hidden": "true" }, "▾"),
+    ));
+    if (isFolded) continue;
+    for (const p of list) renderCard(grid, p);
+  }
+}
+
+function renderCard(grid, p) {
+  {
     const e = state.evals[p.playerNumber];
     const done = hasContent(e);
     const btn = el("button", {

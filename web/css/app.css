@@ -119,6 +119,14 @@ textarea { min-height: 88px; resize: vertical; }
 .player.done { border-color: var(--ok); }
 .player.inactive { opacity: .45; }
 
+/* Grid groups (one per jersey colour / team), collapsible */
+.group { grid-column: 1 / -1; display: flex; align-items: center; gap: .5rem; min-height: var(--tap); margin-top: .35rem;
+  padding: 0 .6rem; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); font-weight: 800; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.group .sw { width: 20px; height: 20px; border-radius: 6px; border: 1px solid rgba(0,0,0,.35); }
+.group .chev { margin-left: auto; width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--border); background: var(--surface-2); text-align: center; line-height: 24px; font-size: .9rem; transition: transform .15s; }
+.group .stat { font-weight: 600; color: var(--muted); font-size: .9rem; border: 0; padding: 0; min-width: 0; }
+.group[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+
 /* Progress footer */
 .progress { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: var(--bg); border-top: 2px solid var(--border);
   padding: .6rem 1rem calc(.6rem + env(safe-area-inset-bottom)); font-weight: 700; text-align: center; }

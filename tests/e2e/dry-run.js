@@ -255,6 +255,18 @@ try {
   assert(/of 11 scored/.test(await ev.locator("#progressText").textContent()) && /1 absent/.test(await ev.locator("#progressText").textContent()), "progress excludes the absent player");
   log("evaluator signed in, sees 11 players, AA badge visible, absent player hidden");
 
+  // Colour groups fold from their header and stay folded across a reload
+  const groupsBefore = await ev.locator(".group").allTextContents();
+  assert(groupsBefore.length >= 3, `grid grouped by colour: ${groupsBefore.join(" | ")}`);
+  await ev.locator('.group[data-group="White"]').click();
+  assert((await ev.locator('.player[aria-label^="W-"]').count()) === 0, "White cards hidden when the group is folded");
+  assert((await ev.locator('.player[aria-label^="R-"]').count()) > 0, "other groups still visible");
+  await ev.reload();
+  await ev.locator('.group[data-group="White"][aria-expanded="false"]').waitFor({ timeout: 20000 });
+  await ev.locator('.group[data-group="White"]').click();
+  await ev.locator('.player[aria-label^="W-07"]').waitFor({ timeout: 10000 });
+  log("evaluator colour groups fold, survive reload, expand again");
+
   async function scorePlayer(index, value, tier) {
     const card = ev.locator(".player").nth(index);
     const label = await card.getAttribute("aria-label");
