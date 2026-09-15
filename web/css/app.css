@@ -217,8 +217,11 @@ input[type=checkbox] { width: 24px; height: 24px; }
 .team summary .pill.pick { border-color: var(--accent); color: var(--accent); }
 .team[open] summary .pill.pick { color: var(--fg); border-color: var(--border); }
 .team .roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .35rem; margin-top: .5rem; }
-.team .roster { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
-.team .roster label { display: flex; align-items: center; gap: .4rem; min-height: 44px; padding: 0 .5rem; border: 2px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 1rem; white-space: nowrap; }
+.team .roster { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+.team .roster label { display: flex; align-items: center; gap: .35rem; min-height: 44px; padding: 0 .5rem; border: 2px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 1rem; white-space: nowrap; overflow: hidden; }
+.team .roster label input[type=checkbox] { flex: 0 0 auto; width: 22px; height: 22px; }
+.team .roster label b { flex: 1 1 auto; text-align: right; }
+.team .roster label .small { flex: 0 0 auto; }
 .team .roster label b { font-size: 1.15rem; }
 .team .roster label.on { border-color: var(--accent); }
 .attend h4 { grid-column: 1 / -1; margin: .4rem 0 0; font-size: 1rem; }
