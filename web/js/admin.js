@@ -571,8 +571,13 @@ function renderTeams() {
     const commitOther = () => { const v = cOther.value.trim(); if (v) updateTeam(team, { colour: v }); };
     cOther.addEventListener("change", commitOther);
     cOther.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitOther(); } });
+    // Rename in place: the name is an input in the summary row, saved when you leave it or press Enter.
+    const nameIn = el("input", { type: "text", class: "sm", maxlength: "30", value: team.name, "aria-label": `Name of ${team.name}`, style: "min-width:140px;width:auto",
+      onclick: (ev) => ev.stopPropagation() });
+    nameIn.addEventListener("change", () => { const v = nameIn.value.trim(); if (v && v !== team.name) updateTeam(team, { name: v }); });
+    nameIn.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); nameIn.blur(); } });
     const det = el("details", { class: "team", "data-team": team.id, open: state.openTeam === team.id ? "" : null },
-      el("summary", {}, el("span", { class: "swatch", style: `background:${swatchColour(team.colour || "")}` }), team.name,
+      el("summary", {}, el("span", { class: "swatch", style: `background:${swatchColour(team.colour || "")}` }), nameIn,
         el("span", { class: "pill" }, `${team.players.length} players`),
         el("span", { class: "muted small", style: "font-weight:400" }, team.players.filter((pn) => t.players.find((p) => p.playerNumber === pn)?.position === "G").length + " G"),
         cSel, cOther,
@@ -603,7 +608,7 @@ async function updateTeam(team, patch) {
     Object.assign(team, data.updateTeam);
     for (const s of state.tryout.sessions) deriveTeams(s, state.tryout.teams);
     renderAll();
-  }, `${team.name}${patch.colour !== undefined ? ` now wears ${patch.colour || "no set colour"}` : " updated"}.`);
+  }, patch.name !== undefined ? `Team renamed to ${patch.name}.` : `${team.name}${patch.colour !== undefined ? ` now wears ${patch.colour || "no set colour"}` : " updated"}.`);
 }
 
 async function setTeamPlayers(team, players) {

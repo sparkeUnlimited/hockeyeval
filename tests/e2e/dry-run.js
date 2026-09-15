@@ -183,7 +183,7 @@ try {
     await admin.fill("#teamName", name);
     await admin.selectOption("#teamColour", colour);
     await admin.click("#teamForm button[type=submit]");
-    const det = admin.locator(`#teamsList details.team`).filter({ hasText: name });
+    const det = admin.locator(`#teamsList details.team`).filter({ has: admin.locator(`input[value="${name}"]`) });
     await det.waitFor({ timeout: 20000 });
     await det.evaluate((d) => { d.open = true; });
     for (let i = 0; i < members.length; i++) {
@@ -191,8 +191,26 @@ try {
       await expectMsg(admin, `${name}: ${i + 1} players.`); // exact count: each tick re-renders the tables when it lands
     }
   }
+  // Rename Team 2 -> Team B and back (inline name field), then check delete works on a throwaway team
+  const t2 = admin.locator("#teamsList details.team").filter({ has: admin.locator('input[value="Team 2"]') });
+  await t2.locator('input[aria-label^="Name of"]').fill("Team B");
+  await t2.locator('input[aria-label^="Name of"]').dispatchEvent("change");
+  await expectMsg(admin, "Team renamed to Team B");
+  const tB = admin.locator("#teamsList details.team").filter({ has: admin.locator('input[value="Team B"]') });
+  await tB.locator('input[aria-label^="Name of"]').fill("Team 2");
+  await tB.locator('input[aria-label^="Name of"]').dispatchEvent("change");
+  await expectMsg(admin, "Team renamed to Team 2");
+  await admin.fill("#teamName", "Scratch");
+  await admin.click("#teamForm button[type=submit]");
+  const scratch = admin.locator("#teamsList details.team").filter({ has: admin.locator('input[value="Scratch"]') });
+  await scratch.waitFor({ timeout: 20000 });
+  await scratch.locator("button", { hasText: "Delete team" }).click();
+  await expectMsg(admin, "Scratch deleted");
+  assert((await admin.locator("#teamsList details.team").count()) === 2, "back to 2 teams after delete");
+  log("team renamed and renamed back; throwaway team deleted");
+
   // Roster shows team-coloured codes: B-08 on Team 1 (Red) reads R-08
-  const t1 = admin.locator("#teamsList details.team").filter({ hasText: "Team 1" });
+  const t1 = admin.locator("#teamsList details.team").filter({ has: admin.locator('input[value="Team 1"]') });
   assert(/R-08/.test(await t1.locator('label[data-roster="B-08"]').textContent()), "roster shows the team colour code");
   const scrim = admin.locator("#sessionsBody tr").filter({ has: admin.locator('input[value="Skate 2 – Scrimmage"]') });
   await scrim.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 1" });
