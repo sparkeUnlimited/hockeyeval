@@ -27,6 +27,7 @@ type Tryout {
 type Team {
   id: ID!
   name: String!            # a label like "Team 1" or "Team Red" — never a person's name
+  colour: String           # the team's jersey colour; every player on the team defaults to it
   players: [ID!]!          # playerNumbers on this team
 }
 
@@ -147,7 +148,9 @@ type Mutation {
   # and any score for them in that session is rejected, so a missed skate never counts as an evaluation.
   setAttendance(tryoutId: ID!, sessionId: ID!, playerNumber: ID!, present: Boolean!): Session!
     @aws_auth(cognito_groups: ["admin"])
-  createTeam(tryoutId: ID!, name: String!): Team! @aws_auth(cognito_groups: ["admin"])
+  createTeam(tryoutId: ID!, name: String!, colour: String): Team! @aws_auth(cognito_groups: ["admin"])
+  # Rename a team and/or change its colour (omitted fields keep their value).
+  updateTeam(tryoutId: ID!, teamId: ID!, name: String, colour: String): Team! @aws_auth(cognito_groups: ["admin"])
   deleteTeam(tryoutId: ID!, teamId: ID!): ID! @aws_auth(cognito_groups: ["admin"])
   # Replace a team's roster.
   setTeamPlayers(tryoutId: ID!, teamId: ID!, players: [ID!]!): Team! @aws_auth(cognito_groups: ["admin"])

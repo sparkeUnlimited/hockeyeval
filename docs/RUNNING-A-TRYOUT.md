@@ -68,10 +68,13 @@ only some of your sessions. Tick **AA** on their row in the Players table. Evalu
 player's card and on the scoring sheet, the same as the note on the paper sheets today, and the Rankings tab has an
 *AA only* filter so you can look at them as a group.
 
-**Teams for scrimmages and games.** Under *Teams*, create a team ("Team 1", "Team 2"…) and tick the players on
-it. Make as many teams as you need; a player can be on more than one (the day-2 teams and the Wednesday teams can
-overlap however you like). Then, in the *Sessions* table, each scrimmage or game row has a *Teams on the ice*
-cell: pick a team, pick its colour, press *+ team*, and do it again for the other team. That is the whole setup
+**Teams for scrimmages and games.** Under *Teams*, create a team ("Team 1", "Team 2"…), give it a colour, and
+tick the players on it. Every player on the team wears the team colour, whatever their own default jersey: White
+433 on a Red team shows up for evaluators as `R-433`, and the roster list shows exactly that code. The colour can
+be changed on the team's row at any time. Make as many teams as you need; a player can be on more than one (the
+day-2 teams and the Wednesday teams can overlap however you like). Then, in the *Sessions* table, each scrimmage
+or game row has a *Teams on the ice* cell: pick a team (its colour is filled in for you; change it only if the
+team is swapping jerseys for that one session), press *+ team*, and do it again for the other team. That is the whole setup
 for a game: "Team 1 in Red vs Team 2 in White". Players who are not on a playing team are **not dressed** for
 that session: evaluators do not see them, cannot score them, and the session does not count in their Sessions
 column. Use the ✕ on a team pill to take it off a session, and *Delete team* under *Teams* when a grouping is no

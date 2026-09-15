@@ -543,20 +543,39 @@ function renderTeams() {
   if (!t) return;
   const list = $("teamsList"); list.innerHTML = "";
   const players = t.players.filter((p) => p.active);
+  fillColourSelect($("teamColour"), { otherInput: $("teamColourOther") });
   for (const team of t.teams) {
     const roster = el("div", { class: "roster" });
+    const codeIn = (p) => (team.colour ? `${team.colour.charAt(0).toUpperCase()}-${String(p.number).padStart(2, "0")}` : p.playerNumber);
     for (const p of players) {
       const box = el("input", { type: "checkbox", "aria-label": `${p.playerNumber} on ${team.name}` });
-      box.checked = team.players.includes(p.playerNumber);
+      const on = team.players.includes(p.playerNumber);
+      box.checked = on;
       box.addEventListener("change", () => {
         const next = box.checked ? [...team.players, p.playerNumber] : team.players.filter((x) => x !== p.playerNumber);
         setTeamPlayers(team, next);
       });
-      roster.append(el("label", {}, box, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), p.playerNumber, el("span", { class: "muted small" }, p.position)));
+      // On the team: shown in the team colour with the code evaluators will see. Off the team: their own default.
+      roster.append(el("label", { "data-roster": p.playerNumber, title: on && team.colour ? `Usually ${p.playerNumber}` : "" }, box,
+        el("span", { class: "swatch", style: `background:${swatchColour(on && team.colour ? team.colour : p.colour)}` }),
+        on ? codeIn(p) : p.playerNumber, el("span", { class: "muted small" }, p.position)));
     }
+    // Team colour: dropdown in the summary row, saves on change.
+    const cSel = el("select", { class: "colour-select sm", "aria-label": `Colour for ${team.name}`, onclick: (ev) => ev.stopPropagation() });
+    const cOther = el("input", { type: "text", maxlength: "20", placeholder: "New colour", hidden: true, "aria-label": `New colour for ${team.name}`, onclick: (ev) => ev.stopPropagation() });
+    fillColourSelect(cSel, { value: team.colour || "", allowNone: true });
+    cSel.addEventListener("change", () => {
+      if (cSel.value === OTHER) { cOther.hidden = false; cOther.focus(); return; }
+      updateTeam(team, { colour: cSel.value });
+    });
+    const commitOther = () => { const v = cOther.value.trim(); if (v) updateTeam(team, { colour: v }); };
+    cOther.addEventListener("change", commitOther);
+    cOther.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitOther(); } });
     const det = el("details", { class: "team", "data-team": team.id, open: state.openTeam === team.id ? "" : null },
-      el("summary", {}, team.name, el("span", { class: "pill" }, `${team.players.length} players`),
+      el("summary", {}, el("span", { class: "swatch", style: `background:${swatchColour(team.colour || "")}` }), team.name,
+        el("span", { class: "pill" }, `${team.players.length} players`),
         el("span", { class: "muted small", style: "font-weight:400" }, team.players.filter((pn) => t.players.find((p) => p.playerNumber === pn)?.position === "G").length + " G"),
+        cSel, cOther,
         el("button", { class: "btn sm danger", type: "button", style: "margin-left:auto", onclick: (ev) => { ev.preventDefault(); deleteTeam(team); } }, "Delete team")),
       roster);
     det.addEventListener("toggle", () => { if (det.open) state.openTeam = team.id; else if (state.openTeam === team.id) state.openTeam = null; });
@@ -568,16 +587,28 @@ function renderTeams() {
 $("teamForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   await run(async () => {
-    const data = await gql(`mutation($tryoutId: ID!, $name: String!) { createTeam(tryoutId: $tryoutId, name: $name) { id name players } }`, { tryoutId: state.tryout.id, name: $("teamName").value.trim() });
-    $("teamName").value = "";
+    const colour = colourValue($("teamColour"), $("teamColourOther"));
+    const data = await gql(`mutation($tryoutId: ID!, $name: String!, $colour: String) { createTeam(tryoutId: $tryoutId, name: $name, colour: $colour) { id name colour players } }`,
+      { tryoutId: state.tryout.id, name: $("teamName").value.trim(), colour: colour || null });
+    $("teamName").value = ""; $("teamColourOther").value = ""; $("teamColourOther").hidden = true;
     state.openTeam = data.createTeam.id;
     await loadAll();
   }, "Team created. Tick the players on it.");
 });
 
+async function updateTeam(team, patch) {
+  await run(async () => {
+    const data = await gql(`mutation($tryoutId: ID!, $teamId: ID!, $name: String, $colour: String) { updateTeam(tryoutId: $tryoutId, teamId: $teamId, name: $name, colour: $colour) { id name colour players } }`,
+      { tryoutId: state.tryout.id, teamId: team.id, name: patch.name ?? null, colour: patch.colour ?? null });
+    Object.assign(team, data.updateTeam);
+    for (const s of state.tryout.sessions) deriveTeams(s, state.tryout.teams);
+    renderAll();
+  }, `${team.name}${patch.colour !== undefined ? ` now wears ${patch.colour || "no set colour"}` : " updated"}.`);
+}
+
 async function setTeamPlayers(team, players) {
   await run(async () => {
-    const data = await gql(`mutation($tryoutId: ID!, $teamId: ID!, $players: [ID!]!) { setTeamPlayers(tryoutId: $tryoutId, teamId: $teamId, players: $players) { id name players } }`,
+    const data = await gql(`mutation($tryoutId: ID!, $teamId: ID!, $players: [ID!]!) { setTeamPlayers(tryoutId: $tryoutId, teamId: $teamId, players: $players) { id name colour players } }`,
       { tryoutId: state.tryout.id, teamId: team.id, players });
     team.players = data.setTeamPlayers.players;
     for (const s of state.tryout.sessions) deriveTeams(s, state.tryout.teams);
@@ -609,7 +640,9 @@ function sessionTeamsCell(s) {
   if (!available.length) return wrap;
   const teamSel = el("select", { class: "sm", "aria-label": `Add team to ${s.label}` }, ...available.map((x) => el("option", { value: x.id }, x.name)));
   const colSel = el("select", { class: "sm colour-select", "aria-label": `Colour for the team added to ${s.label}` });
-  fillColourSelect(colSel, { value: (s.teams || []).length ? "Red" : "White" });
+  const teamColour = () => t.teams.find((x) => x.id === teamSel.value)?.colour || "White";
+  fillColourSelect(colSel, { value: teamColour() }); // pre-filled from the team; change it for a one-off jersey swap
+  teamSel.addEventListener("change", () => fillColourSelect(colSel, { value: teamColour() }));
   const add = el("button", { class: "btn sm", type: "button", onclick: () => {
     if (colSel.value === OTHER) { msg("Pick a colour from the list (add new colours in the Attendance & jerseys section).", "bad"); return; }
     setSessionTeams(s, [...(s.teams || []), { teamId: teamSel.value, colour: colSel.value }]);

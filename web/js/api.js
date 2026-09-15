@@ -238,7 +238,7 @@ export const Q_CURRENT_TRYOUT = `query { currentTryout {
   id name season status createdAt canEvaluate
   sessions { id label date type order jersey absent colours teams { teamId colour } }
   players { playerNumber colour colour2 number position active tag }
-  teams { id name players }
+  teams { id name colour players }
 } }`;
 
 /** Admin variant: also lists who may score this tryout (admin-only field). */
@@ -246,7 +246,7 @@ export const Q_CURRENT_TRYOUT_ADMIN = `query { currentTryout {
   id name season status createdAt canEvaluate
   sessions { id label date type order jersey absent colours teams { teamId colour } }
   players { playerNumber colour colour2 number position active tag }
-  teams { id name players }
+  teams { id name colour players }
   evaluatorAccess { evaluatorId enabled updatedAt }
 } }`;
 
@@ -310,8 +310,9 @@ export function deriveTeams(session, teams) {
   for (const st of session.teams) {
     const team = byId.get(st.teamId);
     if (!team) continue;
+    const colour = st.colour || team.colour || null; // session colour wins, then the team's own colour
     for (const pn of team.players) {
-      if (!(pn in session.teamColours)) { session.teamColours[pn] = st.colour; session.teamOf[pn] = team.name; }
+      if (!(pn in session.teamColours)) { session.teamColours[pn] = colour; session.teamOf[pn] = team.name; }
     }
   }
   return session;

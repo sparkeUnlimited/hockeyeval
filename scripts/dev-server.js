@@ -143,6 +143,7 @@ const FIELDS = {
   setAttendance: [await R("Mutation.setAttendance.js")],
   setSessionColours: [await R("Mutation.setSessionColours.js")],
   createTeam: [await R("Mutation.createTeam.js")],
+  updateTeam: [await R("Mutation.updateTeam.js")],
   deleteTeam: [await R("Mutation.deleteTeam.js")],
   setTeamPlayers: [await R("Mutation.setTeamPlayers.js")],
   setSessionTeams: [await R("Mutation.setSessionTeams.js")],
@@ -153,7 +154,7 @@ const FIELDS = {
   deleteEvaluator: [await R("Lambda.adminOps.js")],
   exportUrl: [await R("Lambda.adminOps.js")],
 };
-const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "setAttendance", "setSessionColours", "createTeam", "deleteTeam", "setTeamPlayers", "setSessionTeams", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
+const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "setAttendance", "setSessionColours", "createTeam", "updateTeam", "deleteTeam", "setTeamPlayers", "setSessionTeams", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
 
 async function runField(field, args, identity) {
   const ctx = { args, arguments: args, identity, stash: {}, prev: { result: null }, result: null, error: null, info: { fieldName: field, parentTypeName: "" } };
@@ -210,8 +211,8 @@ function seed() {
     const pn = `${colour[0]}-${String(number).padStart(2, "0")}`;
     db.set(k(`TRYOUT#${id}`, `PLAYER#${pn}`), { PK: `TRYOUT#${id}`, SK: `PLAYER#${pn}`, tryoutId: id, playerNumber: pn, colour, colour2, number, position, active: true, tag: tag || null });
   }
-  db.set(k(`TRYOUT#${id}`, "TEAM#team1"), { PK: `TRYOUT#${id}`, SK: "TEAM#team1", tryoutId: id, teamId: "team1", name: "Team 1", players: ["W-01", "W-04", "W-07", "B-08", "B-10", "R-02", "R-05"] });
-  db.set(k(`TRYOUT#${id}`, "TEAM#team2"), { PK: `TRYOUT#${id}`, SK: "TEAM#team2", tryoutId: id, teamId: "team2", name: "Team 2", players: ["B-01", "B-03", "W-09", "W-12", "W-14", "B-15", "B-17", "R-11"] });
+  db.set(k(`TRYOUT#${id}`, "TEAM#team1"), { PK: `TRYOUT#${id}`, SK: "TEAM#team1", tryoutId: id, teamId: "team1", name: "Team 1", colour: "Red", players: ["W-01", "W-04", "W-07", "B-08", "B-10", "R-02", "R-05"] });
+  db.set(k(`TRYOUT#${id}`, "TEAM#team2"), { PK: `TRYOUT#${id}`, SK: "TEAM#team2", tryoutId: id, teamId: "team2", name: "Team 2", colour: "White", players: ["B-01", "B-03", "W-09", "W-12", "W-14", "B-15", "B-17", "R-11"] });
   db.get(k(`TRYOUT#${id}`, "SESSION#s2")).teams = [{ teamId: "team1", colour: "Red" }, { teamId: "team2", colour: "White" }];
   for (const [email, label] of [["evaluator1@mock.test", "Evaluator 1"], ["evaluator2@mock.test", "Evaluator 2"]]) {
     const sub = subFor(email);

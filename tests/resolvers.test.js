@@ -139,14 +139,27 @@ describe("Mutation.upsertEvaluation step 1b (team check)", () => {
 describe("teams", () => {
   test("createTeam validates the name and starts with an empty roster", async () => {
     const mod = await loadResolver("Mutation.createTeam.js");
-    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, name: " Team 1 " } }));
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, name: " Team 1 ", colour: "red" } }));
     assert.equal(req.operation, "PutItem");
     const attrs = fromMapValues(req.attributeValues);
     assert.equal(attrs.name, "Team 1");
+    assert.equal(attrs.colour, "Red");
     assert.deepEqual(attrs.players, []);
+    assert.equal(fromMapValues(mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, name: "Team 2" } })).attributeValues).colour, null);
     assert.match(fromMapValues(req.key).SK, /^TEAM#/);
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, name: "Team <b>" } })), "BadRequest", /Team name/);
-    assert.deepEqual(mod.response(ctx({ result: { teamId: "t1", name: "Team 1" } })), { id: "t1", name: "Team 1", players: [] });
+    assert.deepEqual(mod.response(ctx({ result: { teamId: "t1", name: "Team 1" } })), { id: "t1", name: "Team 1", colour: null, players: [] });
+  });
+
+  test("updateTeam changes name and/or colour only", async () => {
+    const mod = await loadResolver("Mutation.updateTeam.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, teamId: "t1", colour: "red" } }));
+    assert.equal(req.update.expression, "SET #colour = :colour");
+    assert.deepEqual(fromMapValues(req.update.expressionValues), { ":colour": "Red" });
+    const both = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, teamId: "t1", name: "Team A", colour: "" } }));
+    assert.deepEqual(fromMapValues(both.update.expressionValues), { ":name": "Team A", ":colour": null });
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, teamId: "t1" } })), "BadRequest", /Nothing/);
+    assert.deepEqual(mod.response(ctx({ result: { teamId: "t1", name: "Team A", colour: "Red", players: ["W-14"] } })), { id: "t1", name: "Team A", colour: "Red", players: ["W-14"] });
   });
 
   test("setTeamPlayers replaces the roster, de-duplicated and validated", async () => {
@@ -175,7 +188,7 @@ describe("teams", () => {
       { SK: "META", name: "n", season: "s", status: "open" },
       { SK: "TEAM#t1", teamId: "t1", name: "Team 1", players: ["W-14"] },
     ] } }));
-    assert.deepEqual(out.teams, [{ id: "t1", name: "Team 1", players: ["W-14"] }]);
+    assert.deepEqual(out.teams, [{ id: "t1", name: "Team 1", colour: null, players: ["W-14"] }]);
   });
 });
 
@@ -311,6 +324,7 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.setAttendance.js", { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: false }],
       ["Mutation.setSessionColours.js", { tryoutId: TRYOUT, sessionId: SESSION, colours: { "W-14": "Red" } }],
       ["Mutation.createTeam.js", { tryoutId: TRYOUT, name: "Team 1" }],
+      ["Mutation.updateTeam.js", { tryoutId: TRYOUT, teamId: "team1", colour: "Red" }],
       ["Mutation.deleteTeam.js", { tryoutId: TRYOUT, teamId: "team1" }],
       ["Mutation.setTeamPlayers.js", { tryoutId: TRYOUT, teamId: "team1", players: ["W-14"] }],
       ["Mutation.setSessionTeams.js", { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "team1", colour: "Red" }] }],

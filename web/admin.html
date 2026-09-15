@@ -93,9 +93,12 @@
 
     <div class="card" id="teamsCard">
       <h2>Teams</h2>
-      <p class="small muted">Teams are groups of players you reuse across scrimmages and games. Make as many as you need (a player can be on more than one), then on each scrimmage session pick which teams are on the ice and what colour each wears. Players not on a playing team are not dressed for that session: evaluators don't see them and cannot score them.</p>
+      <p class="small muted">Teams are groups of players you reuse across scrimmages and games. Give each team a colour: every player on it wears that colour, whatever their own default jersey (White 433 on a Red team shows as <code>R-433</code>). Make as many teams as you need (a player can be on more than one), then on each scrimmage session pick which teams are on the ice; the colour is filled in from the team and can be changed for that session only. Players not on a playing team are not dressed for that session: evaluators don't see them and cannot score them.</p>
       <form id="teamForm" class="row" style="margin-bottom:.75rem">
         <div class="field grow"><label for="teamName">New team</label><input id="teamName" type="text" maxlength="30" placeholder="Team 1" required></div>
+        <div class="field"><label for="teamColour">Team colour</label>
+          <select id="teamColour" class="colour-select" data-default="Red"></select>
+          <input id="teamColourOther" type="text" maxlength="20" placeholder="New colour" hidden></div>
         <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Create team</button></div>
       </form>
       <div id="teamsList"></div>

@@ -123,7 +123,7 @@ export function requireSessionTeams(value) {
 }
 
 export function toTeam(item) {
-  return { id: item.teamId, name: item.name, players: item.players || [] };
+  return { id: item.teamId, name: item.name, colour: item.colour || null, players: item.players || [] };
 }
 
 /** { playerNumber: colour } map for a session. Keys must be player codes, values colour names. Max 200. */

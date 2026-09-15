@@ -297,6 +297,10 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.createTeam.js
+        updateTeam:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.updateTeam.js
         deleteTeam:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -392,6 +396,10 @@ Resources:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
             Pipeline: [createTeam]
+          updateTeam:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [updateTeam]
           deleteTeam:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js

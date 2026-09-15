@@ -179,8 +179,9 @@ try {
   log("session 1 jerseys: defence Red, W-01 Green, forwards default White");
 
   // Teams: Team 1 (6 players) and Team 2 (5 players); B-17 on neither. Scrimmage: Team 1 in Red vs Team 2 in White.
-  for (const [name, members] of [["Team 1", ["W-01", "W-04", "W-07", "B-08", "B-10", "B-03"]], ["Team 2", ["B-01", "W-09", "W-12", "W-14", "B-15"]]]) {
+  for (const [name, colour, members] of [["Team 1", "Red", ["W-01", "W-04", "W-07", "B-08", "B-10", "B-03"]], ["Team 2", "White", ["B-01", "W-09", "W-12", "W-14", "B-15"]]]) {
     await admin.fill("#teamName", name);
+    await admin.selectOption("#teamColour", colour);
     await admin.click("#teamForm button[type=submit]");
     const det = admin.locator(`#teamsList details.team`).filter({ hasText: name });
     await det.waitFor({ timeout: 20000 });
@@ -190,13 +191,16 @@ try {
       await expectMsg(admin, `${name}: ${i + 1} players.`); // exact count: each tick re-renders the tables when it lands
     }
   }
+  // Roster shows team-coloured codes: B-08 on Team 1 (Red) reads R-08
+  const t1 = admin.locator("#teamsList details.team").filter({ hasText: "Team 1" });
+  assert(/R-08/.test(await t1.locator('label[data-roster="B-08"]').textContent()), "roster shows the team colour code");
   const scrim = admin.locator("#sessionsBody tr").filter({ has: admin.locator('input[value="Skate 2 – Scrimmage"]') });
   await scrim.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 1" });
-  await scrim.locator('select[aria-label^="Colour for the team"]').selectOption("Red");
+  assert((await scrim.locator('select[aria-label^="Colour for the team"]').inputValue()) === "Red", "session colour pre-filled from the team");
   await scrim.locator("button", { hasText: "+ team" }).click();
   await expectMsg(admin, "Team 1 in Red");
   await scrim.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 2" });
-  await scrim.locator('select[aria-label^="Colour for the team"]').selectOption("White");
+  assert((await scrim.locator('select[aria-label^="Colour for the team"]').inputValue()) === "White", "Team 2 pre-fills White");
   await scrim.locator("button", { hasText: "+ team" }).click();
   await expectMsg(admin, "Team 1 in Red vs Team 2 in White");
   await admin.selectOption("#aSession", { index: 1 });
