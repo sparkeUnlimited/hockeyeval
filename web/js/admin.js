@@ -546,8 +546,8 @@ function renderTeams() {
   fillColourSelect($("teamColour"), { otherInput: $("teamColourOther") });
   for (const team of t.teams) {
     const roster = el("div", { class: "roster" });
-    const codeIn = (p) => (team.colour ? `${team.colour.charAt(0).toUpperCase()}-${String(p.number).padStart(2, "0")}` : p.playerNumber);
-    for (const p of players) {
+    // Number and position only, sorted by number: the team's colour is what they will wear, so no default colours here.
+    for (const p of [...players].sort((a, b) => a.number - b.number || a.playerNumber.localeCompare(b.playerNumber))) {
       const box = el("input", { type: "checkbox", "aria-label": `${p.playerNumber} on ${team.name}` });
       const on = team.players.includes(p.playerNumber);
       box.checked = on;
@@ -555,10 +555,8 @@ function renderTeams() {
         const next = box.checked ? [...team.players, p.playerNumber] : team.players.filter((x) => x !== p.playerNumber);
         setTeamPlayers(team, next);
       });
-      // On the team: shown in the team colour with the code evaluators will see. Off the team: their own default.
-      roster.append(el("label", { "data-roster": p.playerNumber, title: on && team.colour ? `Usually ${p.playerNumber}` : "" }, box,
-        el("span", { class: "swatch", style: `background:${swatchColour(on && team.colour ? team.colour : p.colour)}` }),
-        on ? codeIn(p) : p.playerNumber, el("span", { class: "muted small" }, p.position)));
+      roster.append(el("label", { class: on ? "on" : "", "data-roster": p.playerNumber, title: p.playerNumber }, box,
+        el("b", {}, String(p.number)), el("span", { class: "muted small" }, p.position)));
     }
     // Team colour: dropdown in the summary row, saves on change.
     const cSel = el("select", { class: "colour-select sm", "aria-label": `Colour for ${team.name}`, onclick: (ev) => ev.stopPropagation() });
@@ -577,8 +575,10 @@ function renderTeams() {
     nameIn.addEventListener("change", () => { const v = nameIn.value.trim(); if (v && v !== team.name) updateTeam(team, { name: v }); });
     nameIn.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); nameIn.blur(); } });
     const det = el("details", { class: "team", "data-team": team.id, open: state.openTeam === team.id ? "" : null },
-      el("summary", {}, el("span", { class: "swatch", style: `background:${swatchColour(team.colour || "")}` }), nameIn,
-        el("span", { class: "pill" }, `${team.players.length} players`),
+      el("summary", { title: "Open to pick the players on this team" },
+        el("span", { class: "chev", "aria-hidden": "true" }, "▾"),
+        el("span", { class: "swatch", style: `background:${swatchColour(team.colour || "")}` }), nameIn,
+        el("span", { class: "pill pick" }, `${team.players.length} players · pick ▾`),
         el("span", { class: "muted small", style: "font-weight:400" }, team.players.filter((pn) => t.players.find((p) => p.playerNumber === pn)?.position === "G").length + " G"),
         cSel, cOther,
         el("button", { class: "btn sm danger", type: "button", style: "margin-left:auto", onclick: (ev) => { ev.preventDefault(); deleteTeam(team); } }, "Delete team")),

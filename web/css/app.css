@@ -206,9 +206,17 @@ input[type=checkbox] { width: 24px; height: 24px; }
 .card.collapsible:not(.collapsed) > h2 { margin-bottom: .5rem; }
 .card.collapsible.collapsed > :not(h2) { display: none; }
 .team { border: 2px solid var(--border); border-radius: var(--radius); padding: .6rem .8rem; margin-bottom: .6rem; background: var(--surface); }
-.team summary { cursor: pointer; font-weight: 700; min-height: 40px; display: flex; align-items: center; gap: .6rem; }
+.team summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; list-style: none; }
+.team summary::-webkit-details-marker { display: none; }
+.team summary .chev { display: inline-block; width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--border); background: var(--surface-2); text-align: center; line-height: 24px; font-size: .9rem; transition: transform .15s; }
+.team:not([open]) summary .chev { transform: rotate(-90deg); }
+.team summary .pill.pick { border-color: var(--accent); color: var(--accent); }
+.team[open] summary .pill.pick { color: var(--fg); border-color: var(--border); }
 .team .roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .35rem; margin-top: .5rem; }
-.team .roster label { display: flex; align-items: center; gap: .4rem; min-height: 40px; padding: 0 .4rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-weight: 600; font-size: .95rem; }
+.team .roster { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+.team .roster label { display: flex; align-items: center; gap: .4rem; min-height: 44px; padding: 0 .5rem; border: 2px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 1rem; white-space: nowrap; }
+.team .roster label b { font-size: 1.15rem; }
+.team .roster label.on { border-color: var(--accent); }
 .attend h4 { grid-column: 1 / -1; margin: .4rem 0 0; font-size: 1rem; }
 .attend label.dressed-no { opacity: .45; }
 .attend { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }

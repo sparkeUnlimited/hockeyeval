@@ -197,7 +197,7 @@ try {
     await det.waitFor({ timeout: 20000 });
     await det.evaluate((d) => { d.open = true; });
     for (let i = 0; i < members.length; i++) {
-      await det.locator(`label:has-text("${members[i]}") input[type=checkbox]`).check();
+      await det.locator(`label[data-roster="${members[i]}"] input[type=checkbox]`).check();
       await expectMsg(admin, `${name}: ${i + 1} players.`); // exact count: each tick re-renders the tables when it lands
     }
   }
@@ -219,9 +219,10 @@ try {
   assert((await admin.locator("#teamsList details.team").count()) === 2, "back to 2 teams after delete");
   log("team renamed and renamed back; throwaway team deleted");
 
-  // Roster shows team-coloured codes: B-08 on Team 1 (Red) reads R-08
+  // Roster picker shows number + position only (no colours); members are outlined
   const t1 = admin.locator("#teamsList details.team").filter({ has: admin.locator('input[value="Team 1"]') });
-  assert(/R-08/.test(await t1.locator('label[data-roster="B-08"]').textContent()), "roster shows the team colour code");
+  assert((await t1.locator('label[data-roster="B-08"]').textContent()).trim() === "8F", "roster shows number and position only");
+  assert(await t1.locator('label[data-roster="B-08"].on').count() === 1, "member label is marked");
   const scrim = admin.locator("#sessionsBody tr").filter({ has: admin.locator('input[value="Skate 2 – Scrimmage"]') });
   await scrim.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 1" });
   assert((await scrim.locator('select[aria-label^="Colour for the team"]').inputValue()) === "Red", "session colour pre-filled from the team");
