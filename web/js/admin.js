@@ -912,7 +912,7 @@ const COLLAPSE_KEY = "ui:setup:collapsed";
 function initCollapsible() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}"); } catch { /* private mode */ }
-  for (const card of document.querySelectorAll("#tab-setup .card")) {
+  for (const card of document.querySelectorAll("#tab-setup .card, #tab-evaluators .card")) {
     const h2 = card.querySelector(":scope > h2");
     if (!h2 || !card.id) continue;
     card.classList.add("collapsible");

@@ -133,8 +133,8 @@ try {
   await ev.click("#sheetClose");
   log("evaluator not on the list: read-only, as expected");
 
-  // ------------------------------------------------------------------ Admin: add the evaluator to the tryout
-  await admin.click('.tab[data-tab="setup"]');
+  // ------------------------------------------------------------------ Admin: add the evaluator to the tryout (Evaluators tab)
+  await admin.click('.tab[data-tab="evaluators"]');
   if (MOCK) {
     await admin.fill("#eEmail", EVAL.email);
     await admin.fill("#eLabel", EVAL.label);
@@ -147,6 +147,7 @@ try {
     await evRow.locator("button", { hasText: "Add to tryout" }).click();
   }
   await admin.locator("#evaluatorsBody tr", { hasText: EVAL.label }).locator(".pill", { hasText: "scoring" }).waitFor({ timeout: 20000 });
+  await admin.click('.tab[data-tab="setup"]');
   log("admin added the evaluator to the tryout");
 
   // ------------------------------------------------------------------ Admin: edit position, add one via dropdowns, delete

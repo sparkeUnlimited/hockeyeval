@@ -106,7 +106,7 @@ other layout, so a roster with names cannot be loaded by accident.
 
 ### 5. Create evaluator logins and add them to the tryout
 
-Under *Evaluators*, enter each evaluator's email and a label. The label is what **you** see in the
+On the **Evaluators** tab, under *Evaluator logins*: Under *Evaluators*, enter each evaluator's email and a label. The label is what **you** see in the
 rankings (`Evaluator 1`, `Evaluator 2` …). Neutral labels let you look at disagreement without bias; use real
 names only if you want to.
 
@@ -207,9 +207,9 @@ A highlighted spread means the evaluators saw different players or different thi
 fault: those are the players to assign to specific evaluators for a second look, or to discuss with the numbers
 in front of you.
 
-### By evaluator
+### Evaluators
 
-The **By evaluator** tab shows every evaluator's average and spread next to the group's, with a tendency note
+The **Evaluators** tab shows every evaluator's average and spread next to the group's, with a tendency note
 (harsh, generous, in line, narrow range) and a full list of their scores and notes. Use it to:
 
 - spot an evaluator who scored everyone 3 or 4 (narrow range: their scores separate nobody);

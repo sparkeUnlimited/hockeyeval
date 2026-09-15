@@ -23,7 +23,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="setup" aria-selected="true">Setup</button>
     <button class="tab" role="tab" data-tab="rankings">Rankings</button>
-    <button class="tab" role="tab" data-tab="evaluators">By evaluator</button>
+    <button class="tab" role="tab" data-tab="evaluators">Evaluators</button>
     <button class="tab" role="tab" data-tab="export">Export</button>
     <button class="tab" role="tab" data-tab="close">Close tryout</button>
   </nav>
@@ -123,17 +123,6 @@
       <div id="attendGrid" class="attend"></div>
     </div>
 
-    <div class="card" id="evaluatorsCard">
-      <h2>Evaluators</h2>
-      <p class="small muted">Evaluators sign in with their email and a one-time code; there is no password to send. Use a label like "Evaluator 3" — the label is what you see in the rankings, so keep it neutral if you prefer blind evaluators. A login only works on a tryout it has been <b>added to</b>; use <b>Disable</b> to cut someone off without deleting them or their scores.</p>
-      <form id="evaluatorForm" class="row">
-        <div class="field grow"><label for="eEmail">Email</label><input id="eEmail" type="email" required></div>
-        <div class="field"><label for="eLabel">Label</label><input id="eLabel" type="text" maxlength="40" placeholder="Evaluator 3" required></div>
-        <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Create login</button></div>
-      </form>
-      <p id="evaluatorHint" class="small muted"></p>
-      <div class="table-wrap"><table><thead><tr><th>Label</th><th>Id</th><th>This tryout</th><th>Access</th><th></th></tr></thead><tbody id="evaluatorsBody"></tbody></table></div>
-    </div>
   </section>
 
   <!-- ============================ Rankings ============================ -->
@@ -152,6 +141,19 @@
 
   <!-- ============================ By evaluator ============================ -->
   <section id="tab-evaluators" class="tabpanel" hidden>
+    <div class="card" id="evaluatorsCard">
+      <h2>Evaluators</h2>
+      <p class="small muted">Evaluators sign in with their email and a one-time code; there is no password to send. Use a label like "Evaluator 3" — the label is what you see in the rankings, so keep it neutral if you prefer blind evaluators. A login only works on a tryout it has been <b>added to</b>; use <b>Disable</b> to cut someone off without deleting them or their scores.</p>
+      <form id="evaluatorForm" class="row">
+        <div class="field grow"><label for="eEmail">Email</label><input id="eEmail" type="email" required></div>
+        <div class="field"><label for="eLabel">Label</label><input id="eLabel" type="text" maxlength="40" placeholder="Evaluator 3" required></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Create login</button></div>
+      </form>
+      <p id="evaluatorHint" class="small muted"></p>
+      <div class="table-wrap"><table><thead><tr><th>Label</th><th>Id</th><th>This tryout</th><th>Access</th><th></th></tr></thead><tbody id="evaluatorsBody"></tbody></table></div>
+    </div>
+
+    <h2 style="margin-top:.5rem">Scores by evaluator</h2>
     <div class="toolbar">
       <label>Evaluator <select id="vEvaluator"></select></label>
       <label>Session <select id="vSession"><option value="all">All sessions</option></select></label>
