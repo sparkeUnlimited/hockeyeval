@@ -152,7 +152,7 @@ const FIELDS = {
   updateTeam: [await R("Mutation.updateTeam.js")],
   deleteTeam: [await R("Mutation.deleteTeam.js")],
   setTeamPlayers: [await R("Mutation.setTeamPlayers.js")],
-  setSessionTeams: [await R("Mutation.setSessionTeams.js")],
+  setSessionTeams: [await R("Mutation.setSessionTeams.1.getSession.js"), await R("Mutation.setSessionTeams.2.put.js")],
   deletePlayer: [await R("Mutation.deletePlayer.1.checkNoScores.js"), await R("Mutation.deletePlayer.2.delete.js")],
   changePlayerColour: [await R("Mutation.changePlayerColour.1.checkNoScores.js"), await R("Mutation.changePlayerColour.2.get.js"), await R("Mutation.changePlayerColour.3.move.js")],
   setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],

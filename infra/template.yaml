@@ -309,10 +309,14 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.setTeamPlayers.js
-        setSessionTeams:
+        sessionTeamsGet:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
-          CodeUri: ./.build/resolvers/Mutation.setSessionTeams.js
+          CodeUri: ./.build/resolvers/Mutation.setSessionTeams.1.getSession.js
+        sessionTeamsPut:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.setSessionTeams.2.put.js
         checkNoScores:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -427,7 +431,7 @@ Resources:
           setSessionTeams:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
-            Pipeline: [setSessionTeams]
+            Pipeline: [sessionTeamsGet, sessionTeamsPut]
           closeTryout:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js

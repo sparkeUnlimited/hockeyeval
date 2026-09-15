@@ -242,12 +242,14 @@ try {
   assert((await skillsRow.locator('select[aria-label^="Colour for the team"]').inputValue()) === "", "skills group defaults to the players' default jerseys");
   await skillsRow.locator("button", { hasText: "+ group" }).click();
   await expectMsg(admin, "Skate 1 – Skills: Team 1.");
+  assert((await skillsRow.locator("button", { hasText: "+ group" }).count()) === 0, "skills session takes one group: picker gone");
   await admin.selectOption("#aSession", { index: 0 });
   assert(/6 not dressed/.test(await admin.locator("#aSummary").textContent()), `6 of 12 not in the skills group: ${await admin.locator("#aSummary").textContent()}`);
   assert(/W-07/.test(await admin.locator('#attendGrid label[data-attend="W-07"]').textContent()), "skills group in default jerseys: W-07 stays White even though Team 1 is Red");
   // and take the group off again so the rest of the run sees everyone
   await skillsRow.locator('button[aria-label^="Remove Team 1"]').click();
   await expectMsg(admin, "no teams, everyone plays");
+  assert((await skillsRow.locator("button", { hasText: "+ group" }).count()) === 1, "picker is back after removing the group");
   log("skills session can carry a group in default jerseys; removed again");
   await admin.selectOption("#aSession", { index: 1 });
   assert(/1 not dressed/.test(await admin.locator("#aSummary").textContent()), "B-17 is not dressed for the scrimmage");

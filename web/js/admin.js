@@ -685,12 +685,12 @@ function sessionTeamsCell(s) {
         onclick: () => setSessionTeams(s, s.teams.filter((x) => x.teamId !== st.teamId)) }, "✕")));
   }
   const skills = s.type === "skills";
-  // Max two: full-ice scrimmages have two teams; a skills night has one or two groups on the ice.
-  if ((s.teams || []).length >= 2) return wrap;
+  // Full-ice scrimmages and games have two teams; a skills session has one group. Past the cap, the picker goes away.
+  if ((s.teams || []).length >= (skills ? 1 : 2)) return wrap;
   const available = t.teams.filter((x) => !(s.teams || []).some((st) => st.teamId === x.id));
   if (!t.teams.length) { wrap.append(el("span", { class: "muted small" }, skills ? "everyone (make a team above to use it as a group)" : "create teams above")); return wrap; }
   if (!available.length) return wrap;
-  if ((s.teams || []).length === 1) wrap.append(el("span", { class: "muted small" }, skills ? "and" : "vs"));
+  if ((s.teams || []).length === 1) wrap.append(el("span", { class: "muted small" }, "vs"));
   else if (skills) wrap.append(el("span", { class: "muted small" }, "everyone, or a group:"));
   const teamSel = el("select", { class: "sm", "aria-label": `Add team to ${s.label}` }, ...available.map((x) => el("option", { value: x.id }, x.name)));
   const colSel = el("select", { class: "sm colour-select", "aria-label": `Colour for the team added to ${s.label}` });

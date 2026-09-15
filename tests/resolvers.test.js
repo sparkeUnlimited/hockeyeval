@@ -170,8 +170,26 @@ describe("teams", () => {
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, teamId: "t1", players: ["Smith-1"] } })), "BadRequest", /playerNumber/);
   });
 
+  test("setSessionTeams step 1 reads the session and stashes its type", async () => {
+    const mod = await loadResolver("Mutation.setSessionTeams.1.getSession.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION } }));
+    assert.deepEqual(fromMapValues(req.key), { PK: `TRYOUT#${TRYOUT}`, SK: `SESSION#${SESSION}` });
+    const c = ctx({ result: { sessionId: SESSION, type: "skills" } });
+    mod.response(c);
+    assert.equal(c.stash.sessionType, "skills");
+    throwsType(() => mod.response(ctx({ result: null })), "NotFound");
+  });
+
+  test("setSessionTeams: a skills session takes one group, scrimmages two teams", async () => {
+    const mod = await loadResolver("Mutation.setSessionTeams.2.put.js");
+    const two = [{ teamId: "t1", colour: "Red" }, { teamId: "t2", colour: "White" }];
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), stash: { sessionType: "skills" }, args: { tryoutId: TRYOUT, sessionId: SESSION, teams: two } })), "BadRequest", /one group/);
+    assert.equal(mod.request(ctx({ identity: adminIdentity(), stash: { sessionType: "skills" }, args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [two[0]] } })).operation, "UpdateItem");
+    assert.equal(mod.request(ctx({ identity: adminIdentity(), stash: { sessionType: "scrimmage" }, args: { tryoutId: TRYOUT, sessionId: SESSION, teams: two } })).operation, "UpdateItem");
+  });
+
   test("setSessionTeams validates ids/colours, rejects duplicates, empty clears", async () => {
-    const mod = await loadResolver("Mutation.setSessionTeams.js");
+    const mod = await loadResolver("Mutation.setSessionTeams.2.put.js");
     const req = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1", colour: "red" }, { teamId: "t2", colour: "White" }] } }));
     assert.deepEqual(fromMapValues(req.update.expressionValues), { ":teams": [{ teamId: "t1", colour: "Red" }, { teamId: "t2", colour: "White" }] });
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1", colour: "Red" }, { teamId: "t1", colour: "White" }] } })), "BadRequest", /twice/);
@@ -330,7 +348,8 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.updateTeam.js", { tryoutId: TRYOUT, teamId: "team1", colour: "Red" }],
       ["Mutation.deleteTeam.js", { tryoutId: TRYOUT, teamId: "team1" }],
       ["Mutation.setTeamPlayers.js", { tryoutId: TRYOUT, teamId: "team1", players: ["W-14"] }],
-      ["Mutation.setSessionTeams.js", { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "team1", colour: "Red" }] }],
+      ["Mutation.setSessionTeams.1.getSession.js", { tryoutId: TRYOUT, sessionId: SESSION }],
+      ["Mutation.setSessionTeams.2.put.js", { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "team1", colour: "Red" }] }],
       ["Mutation.deletePlayer.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.deletePlayer.2.delete.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.changePlayerColour.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14", colour: "Red" }],

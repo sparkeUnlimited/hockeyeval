@@ -100,8 +100,9 @@ Each row has a **Teams on the ice** cell:
   the team (change it only if that team is swapping jerseys for that one session). Then the second team. Once two
   are on, the add controls disappear; use the ✕ on a team to swap it out. That is the whole setup for a game:
   "Team 1 in Red vs Team 2 in White".
-- **Skills**: put the group that is skating on the session with *+ group*, leaving the colour as *default
-  jerseys*. With no group on a skills session, everyone is on the ice.
+- **Skills**: one group on the ice. Put the group that is skating with *+ group*, leaving the colour as *default
+  jerseys*; the picker then goes away until you remove the group with its ✕. With no group on a skills session,
+  everyone is on the ice.
 
 Players who are not on a team or group that is on the ice are **not dressed** for that session: evaluators do not
 see them, cannot score them, and the session does not count in their Sessions column. You never have to mark
