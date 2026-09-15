@@ -543,7 +543,7 @@ function renderTeams() {
   if (!t) return;
   const list = $("teamsList"); list.innerHTML = "";
   const players = t.players.filter((p) => p.active);
-  fillColourSelect($("teamColour"), { otherInput: $("teamColourOther") });
+  fillColourSelect($("teamColour"), { otherInput: $("teamColourOther"), allowNone: true, noneLabel: "None (default jerseys)" });
   for (const team of t.teams) {
     const roster = el("div", { class: "roster" });
     // Number and position only, sorted by number: the team's colour is what they will wear, so no default colours here.
@@ -561,7 +561,7 @@ function renderTeams() {
     // Team colour: dropdown in the summary row, saves on change.
     const cSel = el("select", { class: "colour-select sm", "aria-label": `Colour for ${team.name}`, onclick: (ev) => ev.stopPropagation() });
     const cOther = el("input", { type: "text", maxlength: "20", placeholder: "New colour", hidden: true, "aria-label": `New colour for ${team.name}`, style: "max-width:140px", onclick: (ev) => ev.stopPropagation() });
-    fillColourSelect(cSel, { value: team.colour || "", allowNone: true });
+    fillColourSelect(cSel, { value: team.colour || "", allowNone: true, noneLabel: "None (default jerseys)" });
     cSel.addEventListener("change", () => {
       if (cSel.value === OTHER) { cOther.hidden = false; cOther.focus(); return; }
       updateTeam(team, { colour: cSel.value });

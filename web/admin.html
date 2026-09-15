@@ -82,7 +82,7 @@
       <div class="small muted" style="margin-bottom:.75rem">
         <p style="margin-bottom:.35rem">Teams are groups of players you reuse across sessions: the two teams in a scrimmage or game, or the group that is on the ice for a skills session.</p>
         <ol style="margin:0 0 .35rem 1.2rem;padding:0">
-          <li><b>Create a team</b> below: give it a name and its jersey colour.</li>
+          <li><b>Create a team</b> below: give it a name and, for a scrimmage team, its jersey colour. A skills group needs no colour: leave it as <i>None (default jerseys)</i>, since red and white are on the ice together on skills nights.</li>
           <li><b>Open the team row</b> (the ▾ chevron or the <i>players · pick</i> pill) and tick the players on it by number. A player can be on more than one team.</li>
           <li>On the team row you can <b>rename</b> it, <b>change its colour</b>, or <b>Delete team</b>.</li>
           <li>In <b>Sessions</b> below, put two teams on each scrimmage or game with <i>+ team</i> (the colour comes from the team), or put the group that is skating on a skills session with <i>+ group</i>. Leave a skills group's colour as <i>own colours</i>: in skills sessions players wear their default jersey from the Players list.</li>
@@ -92,7 +92,7 @@
       <form id="teamForm" class="row" style="margin-bottom:.75rem">
         <div class="field grow"><label for="teamName">New team</label><input id="teamName" type="text" maxlength="30" placeholder="Team 1" required></div>
         <div class="field"><label for="teamColour">Team colour</label>
-          <select id="teamColour" class="colour-select" data-default="Red"></select>
+          <select id="teamColour" class="colour-select" data-default=""></select>
           <input id="teamColourOther" type="text" maxlength="20" placeholder="New colour" hidden></div>
         <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Create team</button></div>
       </form>

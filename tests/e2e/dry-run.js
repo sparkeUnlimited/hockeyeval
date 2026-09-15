@@ -158,6 +158,7 @@ try {
   await rowB03.locator("select").first().selectOption("Orange"); // secondary colour dropdown
   await expectMsg(admin, "B-03 updated");
   // add-one form defaults: White / Red, then delete that player again (no scores yet)
+  assert((await admin.locator("#teamColour").inputValue()) === "", "new team defaults to no colour (default jerseys)");
   assert((await admin.locator("#pColour").inputValue()) === "White", "primary defaults to White");
   assert((await admin.locator("#pColour2").inputValue()) === "Red", "secondary defaults to Red");
   await admin.fill("#pNumber", "99");
@@ -242,6 +243,7 @@ try {
   await expectMsg(admin, "Skate 1 – Skills: Team 1.");
   await admin.selectOption("#aSession", { index: 0 });
   assert(/6 not dressed/.test(await admin.locator("#aSummary").textContent()), `6 of 12 not in the skills group: ${await admin.locator("#aSummary").textContent()}`);
+  assert(/W-07/.test(await admin.locator('#attendGrid label[data-attend="W-07"]').textContent()), "skills group in default jerseys: W-07 stays White even though Team 1 is Red");
   // and take the group off again so the rest of the run sees everyone
   await skillsRow.locator('button[aria-label^="Remove Team 1"]').click();
   await expectMsg(admin, "no teams, everyone plays");

@@ -310,7 +310,9 @@ export function deriveTeams(session, teams) {
   for (const st of session.teams) {
     const team = byId.get(st.teamId);
     if (!team) continue;
-    const colour = st.colour || team.colour || null; // session colour wins, then the team's own colour; null = keep own/bulk colours
+    // The session's entry is authoritative: no colour there means default jerseys (a skills group), even if the
+    // team has a colour of its own. Scrimmage rows copy the team colour into the session entry when added.
+    const colour = st.colour || null;
     for (const pn of team.players) {
       if (!(pn in session.teamColours)) { session.teamColours[pn] = colour; session.teamOf[pn] = team.name; }
     }

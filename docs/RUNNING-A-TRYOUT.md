@@ -72,7 +72,8 @@ CSV and paste it. The app refuses any other layout, so a roster with names canno
 ### 4. Make the teams and groups
 
 Under *Teams*, create a team: a name (`Team 1`, `Day 2 Red`, `Group A`) and, for a scrimmage team, its jersey
-colour. Then open the team's row (the chevron, or the *players · pick* pill) and tick the players on it. The
+colour. Leave the colour as *None (default jerseys)* for a skills group: red and white are on the ice together on
+skills nights, and each player keeps their own jersey. Then open the team's row (the chevron, or the *players · pick* pill) and tick the players on it. The
 picker shows numbers and positions only, sorted by number. A player can be on more than one team, so the day-2
 teams and the Wednesday teams can overlap however you like. On the team's row you can rename it, change its
 colour, or *Delete team*.
