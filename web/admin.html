@@ -125,7 +125,14 @@
     <div class="card" id="attendanceCard">
       <h2>Attendance &amp; jerseys</h2>
       <p id="aTeams" class="small" hidden></p>
-      <p class="small muted">For each ice time: untick anyone who is not on the ice, and set the jersey colour each player is wearing. Absent players disappear from the evaluators' screens for that session only and cannot be scored for it. Colours set here are what evaluators see for that session; the number never changes.</p>
+      <div class="small muted" style="margin-bottom:.75rem">
+        <p style="margin-bottom:.35rem">Pick a session, then set two things for that ice time only:</p>
+        <ol style="margin:0 0 .35rem 1.2rem;padding:0">
+          <li><b>Attendance</b>: untick anyone who is not on the ice (injured, sick). They disappear from every evaluator's screen for this session, cannot be scored for it, and it does not count in their Sessions column. Tick them again if they turn up.</li>
+          <li><b>Jerseys</b>: the dropdown on each player is the colour they are wearing today. For a skills night use the bulk row: <i>all forwards → White</i>, Apply, then <i>all defence → Red</i>, Apply. In a scrimmage the list is grouped by team and already shows the team colours; change a player here only if they are wearing something else (a borrowed jersey). <i>Reset to default jerseys</i> clears every colour set here for this session.</li>
+        </ol>
+        <p style="margin:0">Players not on one of a scrimmage's two teams are listed as <i>not dressed</i> and are hidden from evaluators. Evaluators see exactly the colours set here with the player's number; scores always stay with the player. A warning appears if two players would show as the same code.</p>
+      </div>
       <div class="toolbar">
         <label>Session <select id="aSession"></select></label>
         <span id="aSummary" class="muted small"></span>
