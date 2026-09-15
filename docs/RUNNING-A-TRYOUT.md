@@ -106,7 +106,7 @@ other layout, so a roster with names cannot be loaded by accident.
 
 ### 5. Create evaluator logins and add them to the tryout
 
-On the **Evaluators** tab, under *Evaluator logins*: Under *Evaluators*, enter each evaluator's email and a label. The label is what **you** see in the
+On the **Evaluators** tab, under *Evaluator logins*, enter each evaluator's email and a label. The label is what **you** see in the
 rankings (`Evaluator 1`, `Evaluator 2` …). Neutral labels let you look at disagreement without bias; use real
 names only if you want to.
 
