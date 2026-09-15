@@ -252,6 +252,9 @@ only thing that grows, and log groups expire after 30 days.
   against a player.
 - `Player.tag`: a short admin label (12 chars, letters/digits only, never free text) shown as a badge to
   evaluators and in rankings; the UI exposes it as an "AA" checkbox for players still in AA contention.
+- `addSelfAsEvaluator`: the convenor writes their own `USER#` profile (role admin) and is added to the tryout
+  allowlist like any evaluator; the admin page links to the scoring screen and back. The Lambda refuses to delete
+  any login in the admin group.
 - `updatePlayer` (position, secondary colour and/or tag) and `deletePlayer` (refused once the player has scores; a
   two-step pipeline checks GSI1 first) support registration changes before the tryout starts.
 - The Lambda runs Node 22 (Node 20 is deprecated for new functions).

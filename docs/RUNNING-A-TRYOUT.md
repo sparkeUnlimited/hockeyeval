@@ -139,6 +139,13 @@ A login only works for tryouts it has been added to. Logins you create here are 
 automatically and show as **scoring**. Evaluators from a previous season show as **not added** until you click
 *Add to tryout*. The line above the table tells you how many people can currently score.
 
+**Scoring yourself.** If you also want to evaluate, use the *Score players yourself* card at the top of the
+Evaluators tab: pick the label you will appear under (it defaults to "Convenor"; it does not have to say who you
+are) and click *Add me as an evaluator*. That adds you to the tryout with your existing login and gives you an
+*Open the scoring screen* button; on the phone, the scoring screen also has a *Dashboard* link back. Your scores
+count in the rankings under that label like anyone else's, and your login cannot be deleted from the evaluator
+table.
+
 ### 8. Brief the evaluators
 
 Fifteen minutes, ideally with the evaluation guide in hand:

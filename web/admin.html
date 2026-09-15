@@ -165,6 +165,20 @@
 
   <!-- ============================ By evaluator ============================ -->
   <section id="tab-evaluators" class="tabpanel" hidden>
+    <div class="card" id="meCard">
+      <h2>Score players yourself</h2>
+      <div id="meNotSet">
+        <p class="small muted">You can evaluate with your own login. Choose the label you'll appear under in the rankings (it doesn't have to say who you are), and you'll be added to this tryout.</p>
+        <form id="meForm" class="row">
+          <div class="field grow"><label for="meLabel">Your label</label><input id="meLabel" type="text" maxlength="40" value="Convenor" required></div>
+          <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Add me as an evaluator</button></div>
+        </form>
+      </div>
+      <div id="meSet" hidden>
+        <p class="small">You are set up as <b id="meLabelText"></b> and can score this tryout like any evaluator. Your scores count in the rankings under that label.</p>
+        <div class="row"><a class="btn primary" href="evaluate.html" id="meScoreLink">Open the scoring screen</a></div>
+      </div>
+    </div>
     <div class="card" id="evaluatorsCard">
       <h2>Evaluators</h2>
       <p class="small muted">Evaluators sign in with their email and a one-time code; there is no password to send. Use a label like "Evaluator 3" — the label is what you see in the rankings, so keep it neutral if you prefer blind evaluators. A login only works on a tryout it has been <b>added to</b>; use <b>Disable</b> to cut someone off without deleting them or their scores.</p>

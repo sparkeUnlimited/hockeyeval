@@ -181,6 +181,7 @@ Resources:
                 - cognito-idp:AdminAddUserToGroup
                 - cognito-idp:AdminDeleteUser
                 - cognito-idp:ListUsers
+                - cognito-idp:AdminListGroupsForUser
               Resource: !GetAtt UserPool.Arn
             - Effect: Allow
               Action: [dynamodb:PutItem, dynamodb:DeleteItem]
@@ -293,6 +294,10 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.setSessionColours.js
+        addSelfAsEvaluator:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.addSelfAsEvaluator.js
         createTeam:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -412,6 +417,10 @@ Resources:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
             Pipeline: [setSessionColours]
+          addSelfAsEvaluator:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [addSelfAsEvaluator]
           createTeam:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js

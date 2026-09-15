@@ -129,7 +129,7 @@ export class TryoutStack extends cdk.Stack {
     adminFn.addToRolePolicy(new iam.PolicyStatement({
       actions: [
         "cognito-idp:AdminCreateUser", "cognito-idp:AdminAddUserToGroup",
-        "cognito-idp:AdminDeleteUser", "cognito-idp:ListUsers",
+        "cognito-idp:AdminDeleteUser", "cognito-idp:ListUsers", "cognito-idp:AdminListGroupsForUser",
       ],
       resources: [userPool.userPoolArn],
     }));
@@ -214,6 +214,7 @@ export class TryoutStack extends cdk.Stack {
     ]);
     unit("Mutation", "setEvaluatorAccess", tableDs, "Mutation.setEvaluatorAccess.js");
     pipeline("Mutation", "closeTryout", [fn("CloseTryout", tableDs, "Mutation.closeTryout.1.close.js"), getTryoutFn]);
+    unit("Mutation", "addSelfAsEvaluator", tableDs, "Mutation.addSelfAsEvaluator.js");
     unit("Mutation", "createEvaluator", lambdaDs, "Lambda.adminOps.js");
     unit("Mutation", "deleteEvaluator", lambdaDs, "Lambda.adminOps.js");
     unit("Mutation", "exportUrl", lambdaDs, "Lambda.adminOps.js");

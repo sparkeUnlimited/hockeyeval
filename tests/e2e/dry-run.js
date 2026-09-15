@@ -364,6 +364,28 @@ try {
   await ev.locator("#syncText", { hasText: "Synced" }).waitFor({ timeout: 45000 });
   log("back online: outbox flushed, dot green");
 
+  // ------------------------------------------------------------------ Admin scores as an evaluator too
+  await admin.click('.tab[data-tab="evaluators"]');
+  await admin.fill("#meLabel", "Convenor");
+  await admin.click("#meForm button[type=submit]");
+  await expectMsg(admin, "You can now score this tryout");
+  await admin.locator("#meSet:not([hidden])").waitFor({ timeout: 20000 });
+  assert((await admin.locator('#evaluatorsBody tr[data-evaluator]').filter({ hasText: "Convenor" }).locator("button", { hasText: "Delete login" }).count()) === 0, "convenor's own row has no Delete login");
+  const adminScore = await adminCtx.newPage();
+  await adminScore.goto(`${URL_BASE}/evaluate.html`);
+  await adminScore.locator("#tryoutName").filter({ hasText: TRYOUT_NAME }).waitFor({ timeout: 20000 });
+  assert(await adminScore.locator("#dashboardLink").isVisible(), "convenor sees the Dashboard link on the scoring screen");
+  await adminScore.selectOption("#sessionSelect", { index: 0 });
+  await adminScore.locator(".player").first().waitFor();
+  await adminScore.locator(".player").first().click();
+  await adminScore.locator("#sheet").waitFor({ state: "visible" });
+  await adminScore.locator("#criteria .crit").first().locator(".score", { hasText: /^5$/ }).click();
+  await adminScore.click("#saveClose");
+  await adminScore.locator("#syncText", { hasText: "Synced" }).waitFor({ timeout: 30000 });
+  await adminScore.close();
+  await admin.click('.tab[data-tab="setup"]');
+  log("convenor added as an evaluator and scored a player");
+
   // ------------------------------------------------------------------ Admin: delete is refused once a player has scores
   await admin.click("#refreshBtn");
   await expectMsg(admin, "Refreshed");

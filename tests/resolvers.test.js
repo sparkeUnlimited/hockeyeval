@@ -2,7 +2,7 @@ import { test, describe, before } from "node:test";
 import assert from "node:assert/strict";
 import {
   loadResolver, ctx, fromMapValues, evaluatorIdentity, adminIdentity,
-  EVALUATOR_SUB, OTHER_SUB, EarlyReturn,
+  EVALUATOR_SUB, OTHER_SUB, ADMIN_SUB, EarlyReturn,
 } from "./helpers/load-resolver.js";
 
 const TRYOUT = "t-2026-u13";
@@ -355,6 +355,7 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.changePlayerColour.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14", colour: "Red" }],
       ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],
       ["Mutation.closeTryout.1.close.js", { tryoutId: TRYOUT }],
+      ["Mutation.addSelfAsEvaluator.js", { displayName: "Convenor" }],
       ["Lambda.adminOps.js", { email: "e@example.com", displayName: "Evaluator 1" }],
     ];
     for (const [file, args] of cases) {
@@ -675,6 +676,20 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     assert.equal(req.operation, "UpdateItem");
     assert.equal(fromMapValues(req.update.expressionValues)[":closed"], "closed");
     assert.equal(c.stash.tryoutId, TRYOUT);
+  });
+});
+
+describe("Mutation.addSelfAsEvaluator", () => {
+  test("writes a profile row for the caller's own sub, never for an id from args", async () => {
+    const mod = await loadResolver("Mutation.addSelfAsEvaluator.js");
+    const req = mod.request(ctx({ identity: adminIdentity(), args: { displayName: " Convenor ", id: OTHER_SUB, evaluatorId: OTHER_SUB } }));
+    assert.equal(req.operation, "PutItem");
+    assert.deepEqual(fromMapValues(req.key), { PK: `USER#${ADMIN_SUB}`, SK: "META" });
+    const attrs = fromMapValues(req.attributeValues);
+    assert.equal(attrs.userId, ADMIN_SUB); assert.equal(attrs.displayName, "Convenor"); assert.equal(attrs.role, "admin"); assert.equal(attrs.GSI1PK, "USERS");
+    assert.ok(!JSON.stringify(req).includes(OTHER_SUB));
+    throwsType(() => mod.request(ctx({ identity: evaluatorIdentity(), args: { displayName: "x" } })), "Unauthorized");
+    assert.deepEqual(mod.response(ctx({ result: { userId: ADMIN_SUB, displayName: "Convenor", role: "admin" } })), { id: ADMIN_SUB, displayName: "Convenor", role: "admin" });
   });
 });
 

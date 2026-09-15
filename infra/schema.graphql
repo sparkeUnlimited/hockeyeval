@@ -169,6 +169,8 @@ type Mutation {
   # Lambda-backed (Cognito AdminCreateUser). Cognito emails the temporary password.
   createEvaluator(email: AWSEmail!, displayName: String!): EvaluatorProfile!
     @aws_auth(cognito_groups: ["admin"])
+  # The convenor can score too: creates their own evaluator profile (no new login). Add to the tryout as usual.
+  addSelfAsEvaluator(displayName: String!): EvaluatorProfile! @aws_auth(cognito_groups: ["admin"])
   # Lambda-backed. Removes the Cognito user and their profile. Their scores are kept (by id only).
   deleteEvaluator(id: ID!): ID! @aws_auth(cognito_groups: ["admin"])
   closeTryout(tryoutId: ID!): Tryout! @aws_auth(cognito_groups: ["admin"])

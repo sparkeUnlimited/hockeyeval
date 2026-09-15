@@ -127,7 +127,11 @@ function mockLambda({ field, args: a, identity }) {
     db.set(k(`USER#${sub}`, "META"), { PK: `USER#${sub}`, SK: "META", GSI1PK: "USERS", GSI1SK: `USER#${sub}`, userId: sub, displayName: a.displayName.trim(), role: "evaluator" });
     return { id: sub, displayName: a.displayName.trim(), role: "evaluator" };
   }
-  if (field === "deleteEvaluator") { db.delete(k(`USER#${a.id}`, "META")); return a.id; }
+  if (field === "deleteEvaluator") {
+    const prof = db.get(k(`USER#${a.id}`, "META"));
+    if (prof && prof.role === "admin") return { errorMessage: "That login is a convenor and cannot be deleted here", errorType: "Forbidden" };
+    db.delete(k(`USER#${a.id}`, "META")); return a.id;
+  }
   if (field === "exportUrl") return `${origin}/mock-upload/${encodeURIComponent(a.filename)}`;
   return { errorMessage: `Unknown field ${field}`, errorType: "BadRequest" };
 }
@@ -157,11 +161,12 @@ const FIELDS = {
   changePlayerColour: [await R("Mutation.changePlayerColour.1.checkNoScores.js"), await R("Mutation.changePlayerColour.2.get.js"), await R("Mutation.changePlayerColour.3.move.js")],
   setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],
   closeTryout: [await R("Mutation.closeTryout.1.close.js"), await R("Fn.getTryout.js")],
+  addSelfAsEvaluator: [await R("Mutation.addSelfAsEvaluator.js")],
   createEvaluator: [await R("Lambda.adminOps.js")],
   deleteEvaluator: [await R("Lambda.adminOps.js")],
   exportUrl: [await R("Lambda.adminOps.js")],
 };
-const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "changePlayerColour", "setAttendance", "setSessionColours", "createTeam", "updateTeam", "deleteTeam", "setTeamPlayers", "setSessionTeams", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
+const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "changePlayerColour", "setAttendance", "setSessionColours", "createTeam", "updateTeam", "deleteTeam", "setTeamPlayers", "setSessionTeams", "setEvaluatorAccess", "addSelfAsEvaluator", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
 
 async function runField(field, args, identity) {
   const ctx = { args, arguments: args, identity, stash: {}, prev: { result: null }, result: null, error: null, info: { fieldName: field, parentTypeName: "" } };

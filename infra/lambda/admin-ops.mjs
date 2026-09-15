@@ -3,7 +3,7 @@
 // Logging policy: never log the event payload. Log field name and error codes only.
 import {
   CognitoIdentityProviderClient, AdminCreateUserCommand, AdminAddUserToGroupCommand,
-  AdminDeleteUserCommand, ListUsersCommand,
+  AdminDeleteUserCommand, ListUsersCommand, AdminListGroupsForUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient, PutItemCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -88,8 +88,10 @@ async function deleteEvaluator({ id }) {
   const found = await cognito.send(new ListUsersCommand({ UserPoolId: USER_POOL_ID, Filter: `sub = "${id}"`, Limit: 1 }));
   const user = found.Users?.[0];
   if (user) {
-    const isAdmin = false; // we never delete admins from here; admins are managed with the AWS CLI
-    if (!isAdmin) await cognito.send(new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: user.Username }));
+    // Never delete an admin (e.g. the convenor scoring as an evaluator); admins are managed with the AWS CLI.
+    const groups = await cognito.send(new AdminListGroupsForUserCommand({ UserPoolId: USER_POOL_ID, Username: user.Username }));
+    if ((groups.Groups || []).some((g) => g.GroupName === "admin")) throw new ClientError("That login is a convenor and cannot be deleted here", "Forbidden");
+    await cognito.send(new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: user.Username }));
   }
   await ddb.send(new DeleteItemCommand({ TableName: TABLE_NAME, Key: { PK: { S: `USER#${id}` }, SK: { S: "META" } } }));
   return id;

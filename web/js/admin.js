@@ -5,7 +5,7 @@ import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN
 import { CRITERIA, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
 registerServiceWorker();
-await requireAuth({ admin: true });
+const me = await requireAuth({ admin: true });
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs = {}, ...children) => {
@@ -264,9 +264,15 @@ function renderSetup() {
       : a.enabled
         ? el("button", { class: "btn sm", type: "button", onclick: () => setAccess(r.id, false) }, "Disable")
         : el("button", { class: "btn sm", type: "button", onclick: () => setAccess(r.id, true) }, "Enable");
-    eb.append(el("tr", { "data-evaluator": r.id }, el("td", {}, r.displayName), el("td", { class: "muted small" }, r.id), el("td", {}, statusCell), el("td", {}, toggle),
-      el("td", {}, r.orphan ? "" : el("button", { class: "btn sm danger", type: "button", onclick: () => deleteEvaluator(r) }, "Delete login"))));
+    const isMe = r.id === me.sub;
+    eb.append(el("tr", { "data-evaluator": r.id }, el("td", {}, r.displayName, isMe ? el("span", { class: "pill", style: "margin-left:.4rem" }, "you") : null), el("td", { class: "muted small" }, r.id), el("td", {}, statusCell), el("td", {}, toggle),
+      el("td", {}, r.orphan || isMe ? "" : el("button", { class: "btn sm danger", type: "button", onclick: () => deleteEvaluator(r) }, "Delete login"))));
   }
+  // Convenor scoring card
+  const mine = state.evaluators.find((e) => e.id === me.sub);
+  $("meNotSet").hidden = !!mine;
+  $("meSet").hidden = !mine;
+  if (mine) $("meLabelText").textContent = mine.displayName;
   if (!rows.length) eb.append(el("tr", {}, el("td", { colspan: 5, class: "muted" }, "No evaluator logins yet.")));
 
   // session selects
@@ -765,6 +771,18 @@ $("evaluatorForm").addEventListener("submit", async (ev) => {
     $("eEmail").value = ""; $("eLabel").value = "";
     await loadAll();
   }, "Login created and added to this tryout. Send them the app link: they sign in with their email and a one-time code.");
+});
+
+$("meForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  await run(async () => {
+    const data = await gql(`mutation($displayName: String!) { addSelfAsEvaluator(displayName: $displayName) { id displayName role } }`, { displayName: $("meLabel").value.trim() });
+    if (state.tryout) {
+      await gql(`mutation($tryoutId: ID!, $evaluatorId: ID!, $enabled: Boolean!) { setEvaluatorAccess(tryoutId: $tryoutId, evaluatorId: $evaluatorId, enabled: $enabled) { evaluatorId } }`,
+        { tryoutId: state.tryout.id, evaluatorId: data.addSelfAsEvaluator.id, enabled: true });
+    }
+    await loadAll();
+  }, "You can now score this tryout. Open the scoring screen when you're at the rink.");
 });
 
 async function deleteEvaluator(e) {

@@ -10,6 +10,7 @@ import { SCALE, TIERS, criteriaFor, NOTES_MAX } from "./criteria.js";
 registerServiceWorker();
 const me = await requireAuth();
 setCurrentUser(me.sub);
+if (me.groups.includes("admin")) document.getElementById("dashboardLink").hidden = false; // convenor scoring
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs = {}, ...children) => {
