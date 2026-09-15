@@ -31,15 +31,16 @@ type Team {
   players: [ID!]!          # playerNumbers on this team
 }
 
-# Which team plays in a session and what colour it wears. Players on no listed team are not dressed for it.
+# Which team (or skills group) is on the ice in a session and, optionally, the colour it wears.
+# No colour = players keep their own / per-player colours. Players on no listed team are not dressed for it.
 type SessionTeam {
   teamId: ID!
-  colour: String!
+  colour: String
 }
 
 input SessionTeamInput {
   teamId: ID!
-  colour: String!
+  colour: String
 }
 
 type EvaluatorAccess {
@@ -57,7 +58,7 @@ type Session {
   jersey: String!          # primary | secondary: the DEFAULT jersey colour for this session
   absent: [ID!]!           # playerNumbers marked absent for this session (hidden from evaluators, writes rejected)
   colours: AWSJSON         # per-player overrides for this session: { "W-14": "Red", ... }. Wins over teams and jersey.
-  teams: [SessionTeam!]!   # scrimmage/game: the teams on the ice and their colours. Empty = everyone plays.
+  teams: [SessionTeam!]!   # teams (scrimmage/game) or groups (skills) on the ice, max 2. Empty = everyone plays.
 }
 
 # A player's number never changes. Every player gets two jersey colours at registration; the

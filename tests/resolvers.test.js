@@ -176,6 +176,8 @@ describe("teams", () => {
     assert.deepEqual(fromMapValues(req.update.expressionValues), { ":teams": [{ teamId: "t1", colour: "Red" }, { teamId: "t2", colour: "White" }] });
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1", colour: "Red" }, { teamId: "t1", colour: "White" }] } })), "BadRequest", /twice/);
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1", colour: "R3d" }] } })), "BadRequest", /colour/);
+    const group = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1" }, { teamId: "t2", colour: "" }] } }));
+    assert.deepEqual(fromMapValues(group.update.expressionValues), { ":teams": [{ teamId: "t1", colour: null }, { teamId: "t2", colour: null }] }, "skills groups need no colour");
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "t1", colour: "Red" }, { teamId: "t2", colour: "White" }, { teamId: "t3", colour: "Blue" }] } })), "BadRequest", /at most 2/);
     const empty = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, teams: [] } }));
     assert.deepEqual(fromMapValues(empty.update.expressionValues), { ":teams": [] });

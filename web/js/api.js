@@ -310,7 +310,7 @@ export function deriveTeams(session, teams) {
   for (const st of session.teams) {
     const team = byId.get(st.teamId);
     if (!team) continue;
-    const colour = st.colour || team.colour || null; // session colour wins, then the team's own colour
+    const colour = st.colour || team.colour || null; // session colour wins, then the team's own colour; null = keep own/bulk colours
     for (const pn of team.players) {
       if (!(pn in session.teamColours)) { session.teamColours[pn] = colour; session.teamOf[pn] = team.name; }
     }

@@ -234,6 +234,18 @@ try {
   await scrim.locator("button", { hasText: "+ team" }).click();
   await expectMsg(admin, "Team 1 in Red vs Team 2 in White");
   assert((await scrim.locator("button", { hasText: "+ team" }).count()) === 0, "no third team can be added: full ice, two teams");
+  // Skills session: put Team 1 on as a group with own colours (F/D bulk colours stay); others not dressed
+  const skillsRow = admin.locator("#sessionsBody tr").filter({ has: admin.locator('input[value="Skate 1 – Skills"]') });
+  await skillsRow.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 1" });
+  assert((await skillsRow.locator('select[aria-label^="Colour for the team"]').inputValue()) === "", "skills group defaults to the players' default jerseys");
+  await skillsRow.locator("button", { hasText: "+ group" }).click();
+  await expectMsg(admin, "Skate 1 – Skills: Team 1.");
+  await admin.selectOption("#aSession", { index: 0 });
+  assert(/6 not dressed/.test(await admin.locator("#aSummary").textContent()), `6 of 12 not in the skills group: ${await admin.locator("#aSummary").textContent()}`);
+  // and take the group off again so the rest of the run sees everyone
+  await skillsRow.locator('button[aria-label^="Remove Team 1"]').click();
+  await expectMsg(admin, "no teams, everyone plays");
+  log("skills session can carry a group in default jerseys; removed again");
   await admin.selectOption("#aSession", { index: 1 });
   assert(/1 not dressed/.test(await admin.locator("#aSummary").textContent()), "B-17 is not dressed for the scrimmage");
   log("teams created; scrimmage = Team 1 (Red) vs Team 2 (White); B-17 not dressed");

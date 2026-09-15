@@ -117,7 +117,7 @@ export function requireSessionTeams(value) {
     const teamId = requireId(t && t.teamId, "teamId");
     if (seen[teamId]) util.error(`Team ${teamId} listed twice`, "BadRequest");
     seen[teamId] = true;
-    out.push({ teamId, colour: requireColour(t.colour) });
+    out.push({ teamId, colour: optionalColour(t.colour) });
   }
   return out;
 }

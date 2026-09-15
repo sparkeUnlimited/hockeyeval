@@ -320,10 +320,10 @@ function knownColours() {
  * Fill a <select> with the known colours plus "Other…" (and "None" when allowNone). Keeps the current value.
  * When "Other…" is chosen, the paired text input is revealed for a new colour name.
  */
-function fillColourSelect(sel, { value, allowNone = false, otherInput = null } = {}) {
+function fillColourSelect(sel, { value, allowNone = false, otherInput = null, noneLabel = "None" } = {}) {
   const current = value ?? sel.value ?? "";
   sel.innerHTML = "";
-  if (allowNone) sel.append(el("option", { value: "" }, "None"));
+  if (allowNone) sel.append(el("option", { value: "" }, noneLabel));
   for (const c of knownColours()) sel.append(el("option", { value: c }, c));
   sel.append(el("option", { value: OTHER }, "Other…"));
   const wanted = current || sel.dataset.default || "";
@@ -474,11 +474,11 @@ function renderAttendance() {
   // Team sessions: group the grid by team, then list who is not dressed.
   const hasTeams = !!session.teamColours;
   const groups = hasTeams
-    ? [...session.teams.map((st) => ({ title: `${t.teams.find((x) => x.id === st.teamId)?.name || "Team"} · ${st.colour}`, colour: st.colour, players: players.filter((p) => teamNameOf(session, p) === (t.teams.find((x) => x.id === st.teamId)?.name)) })),
-       { title: "Not dressed for this session", players: players.filter((p) => !session.teamColours[p.playerNumber]), notDressed: true }]
+    ? [...session.teams.map((st) => ({ title: `${t.teams.find((x) => x.id === st.teamId)?.name || "Team"}${st.colour ? ` · ${st.colour}` : ""}`, colour: st.colour, players: players.filter((p) => teamNameOf(session, p) === (t.teams.find((x) => x.id === st.teamId)?.name)) })),
+       { title: "Not dressed for this session", players: players.filter((p) => !(p.playerNumber in session.teamColours)), notDressed: true }]
     : [{ title: null, players }];
   $("aTeams").hidden = !hasTeams;
-  $("aTeams").textContent = hasTeams ? `Team session: ${session.teams.map((st) => `${t.teams.find((x) => x.id === st.teamId)?.name || "?"} in ${st.colour}`).join(" vs ")}. Change teams in the Sessions table above.` : "";
+  $("aTeams").textContent = hasTeams ? `On the ice: ${session.teams.map((st) => `${t.teams.find((x) => x.id === st.teamId)?.name || "?"}${st.colour ? ` in ${st.colour}` : ""}`).join(session.type === "skills" ? " and " : " vs ")}. Change that in the Sessions table above.` : "";
   for (const g of groups) {
   if (g.title) grid.append(el("h4", {}, g.title, g.notDressed ? el("span", { class: "muted small", style: "font-weight:400;margin-left:.5rem" }, "(hidden from evaluators)") : null));
   for (const p of g.players) {
@@ -511,7 +511,7 @@ function renderAttendance() {
       p.tag ? el("span", { class: "tagpill" }, p.tag) : null, cSel, cOther));
   }
   }
-  const dressed = players.filter((p) => !hasTeams || session.teamColours[p.playerNumber]).length;
+  const dressed = players.filter((p) => !hasTeams || (p.playerNumber in session.teamColours)).length;
   $("aSummary").textContent = `${dressed - absent} present · ${absent} absent${hasTeams ? ` · ${players.length - dressed} not dressed` : ""} · ${overrides ? `${overrides} colour${overrides === 1 ? "" : "s"} set per player` : hasTeams ? "team colours" : `default ${session.jersey} jerseys`}`;
   const clash = jerseyClashes(session);
   $("aClash").hidden = !clash.length;
@@ -527,7 +527,7 @@ $("bulkApply").addEventListener("click", () => {
   const who = $("bulkWho").value;
   const next = { ...(session.colours || {}) };
   // Applies to everyone dressed for the session (absent players included, so a late arrival is right), not to players on no team.
-  const dressed = (x) => !session.teamColours || !!session.teamColours[x.playerNumber];
+  const dressed = (x) => !session.teamColours || (x.playerNumber in session.teamColours);
   for (const p of state.tryout.players.filter((x) => x.active && dressed(x) && (who === "all" || x.position === who))) next[p.playerNumber] = colour;
   setSessionColours(session, next, `${who === "all" ? "Everyone" : who === "F" ? "Forwards" : who === "D" ? "Defence" : "Goalies"} set to ${colour} for ${session.label}.`);
 });
@@ -635,26 +635,28 @@ function sessionTeamsCell(s) {
   const wrap = el("div", { class: "row", style: "flex-wrap:wrap;gap:.3rem;align-items:center;min-width:280px" });
   for (const st of s.teams || []) {
     const team = t.teams.find((x) => x.id === st.teamId);
-    wrap.append(el("span", { class: "pill" }, el("span", { class: "swatch", style: `background:${swatchColour(st.colour)}` }), `${team?.name || "?"} · ${st.colour} `,
+    wrap.append(el("span", { class: "pill" }, st.colour ? el("span", { class: "swatch", style: `background:${swatchColour(st.colour)}` }) : null, `${team?.name || "?"}${st.colour ? ` · ${st.colour}` : ""} `,
       el("button", { class: "btn sm ghost", type: "button", style: "min-height:28px;padding:0 .3rem", "aria-label": `Remove ${team?.name || "team"} from ${s.label}`,
         onclick: () => setSessionTeams(s, s.teams.filter((x) => x.teamId !== st.teamId)) }, "✕")));
   }
-  if (s.type === "skills") { if (!s.teams?.length) wrap.append(el("span", { class: "muted small" }, "skills: everyone")); return wrap; }
-  // Full ice: exactly two teams. Once two are on, the add controls go away (remove one with ✕ to swap it).
+  const skills = s.type === "skills";
+  // Max two: full-ice scrimmages have two teams; a skills night has one or two groups on the ice.
   if ((s.teams || []).length >= 2) return wrap;
   const available = t.teams.filter((x) => !(s.teams || []).some((st) => st.teamId === x.id));
-  if (!t.teams.length) { wrap.append(el("span", { class: "muted small" }, "create teams above")); return wrap; }
+  if (!t.teams.length) { wrap.append(el("span", { class: "muted small" }, skills ? "everyone (make a team above to use it as a group)" : "create teams above")); return wrap; }
   if (!available.length) return wrap;
-  if ((s.teams || []).length === 1) wrap.append(el("span", { class: "muted small" }, "vs"));
+  if ((s.teams || []).length === 1) wrap.append(el("span", { class: "muted small" }, skills ? "and" : "vs"));
+  else if (skills) wrap.append(el("span", { class: "muted small" }, "everyone, or a group:"));
   const teamSel = el("select", { class: "sm", "aria-label": `Add team to ${s.label}` }, ...available.map((x) => el("option", { value: x.id }, x.name)));
   const colSel = el("select", { class: "sm colour-select", "aria-label": `Colour for the team added to ${s.label}` });
-  const teamColour = () => t.teams.find((x) => x.id === teamSel.value)?.colour || "White";
-  fillColourSelect(colSel, { value: teamColour() }); // pre-filled from the team; change it for a one-off jersey swap
-  teamSel.addEventListener("change", () => fillColourSelect(colSel, { value: teamColour() }));
+  // Pre-filled from the team. Skills groups default to "own colours" so forwards/defence keep what the bulk row set.
+  const teamColour = () => (skills ? "" : t.teams.find((x) => x.id === teamSel.value)?.colour || "White");
+  fillColourSelect(colSel, { value: teamColour(), allowNone: true, noneLabel: "default jerseys" });
+  teamSel.addEventListener("change", () => fillColourSelect(colSel, { value: teamColour(), allowNone: true, noneLabel: "default jerseys" }));
   const add = el("button", { class: "btn sm", type: "button", onclick: () => {
     if (colSel.value === OTHER) { msg("Pick a colour from the list (add new colours in the Attendance & jerseys section).", "bad"); return; }
-    setSessionTeams(s, [...(s.teams || []), { teamId: teamSel.value, colour: colSel.value }]);
-  } }, "+ team");
+    setSessionTeams(s, [...(s.teams || []), { teamId: teamSel.value, colour: colSel.value || null }]);
+  } }, skills ? "+ group" : "+ team");
   wrap.append(teamSel, colSel, add);
   return wrap;
 }
@@ -668,7 +670,7 @@ async function setSessionTeams(session, teams, okText) {
     deriveTeams(session, state.tryout.teams);
     state.attendSessionId = session.id;
     renderAll();
-  }, okText || (teams.length ? `${session.label}: ${teams.map((t) => `${state.tryout.teams.find((x) => x.id === t.teamId)?.name || "?"} in ${t.colour}`).join(" vs ")}.` : `${session.label}: no teams, everyone plays.`));
+  }, okText || (teams.length ? `${session.label}: ${teams.map((t) => `${state.tryout.teams.find((x) => x.id === t.teamId)?.name || "?"}${t.colour ? ` in ${t.colour}` : ""}`).join(session.type === "skills" ? " and " : " vs ")}.` : `${session.label}: no teams, everyone plays.`));
 }
 
 async function setSessionColours(session, colours, okText) {

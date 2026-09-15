@@ -78,7 +78,9 @@ team is swapping jerseys for that one session), press *+ team*, and do it again 
 for a game: "Team 1 in Red vs Team 2 in White". Players who are not on a playing team are **not dressed** for
 that session: evaluators do not see them, cannot score them, and the session does not count in their Sessions
 column. Use the ✕ on a team pill to take it off a session, and *Delete team* under *Teams* when a grouping is no
-longer needed. Skills sessions ignore teams: everyone plays.
+longer needed. For a skills night where you split the players into groups, make each group a team and put the one
+that is skating on the session with *+ group*, leaving its colour as *default jerseys*: in skills sessions players
+wear the jersey from the Players list. With no group on a skills session, everyone is on the ice.
 
 **Jerseys for skills nights.** Under *Attendance & jerseys*, pick the session and set what each player is
 actually wearing. Use the bulk row: *all forwards → White*, Apply, then *all defence → Red*, Apply. Individual

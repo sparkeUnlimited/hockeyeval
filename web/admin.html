@@ -80,14 +80,14 @@
     <div class="card" id="teamsCard">
       <h2>Teams</h2>
       <div class="small muted" style="margin-bottom:.75rem">
-        <p style="margin-bottom:.35rem">Teams are groups of players you reuse for scrimmages and games. Every scrimmage or game is full ice with exactly two teams.</p>
+        <p style="margin-bottom:.35rem">Teams are groups of players you reuse across sessions: the two teams in a scrimmage or game, or the group that is on the ice for a skills session.</p>
         <ol style="margin:0 0 .35rem 1.2rem;padding:0">
           <li><b>Create a team</b> below: give it a name and its jersey colour.</li>
           <li><b>Open the team row</b> (the ▾ chevron or the <i>players · pick</i> pill) and tick the players on it by number. A player can be on more than one team.</li>
           <li>On the team row you can <b>rename</b> it, <b>change its colour</b>, or <b>Delete team</b>.</li>
-          <li>In <b>Sessions</b> below, put two teams on each scrimmage or game with <i>+ team</i>. The colour comes from the team; change it there only if that team wears something else for that one session.</li>
+          <li>In <b>Sessions</b> below, put two teams on each scrimmage or game with <i>+ team</i> (the colour comes from the team), or put the group that is skating on a skills session with <i>+ group</i>. Leave a skills group's colour as <i>own colours</i>: in skills sessions players wear their default jersey from the Players list.</li>
         </ol>
-        <p style="margin:0">Every player on a team wears the team colour, whatever their default jersey: White 433 on a Red team shows to evaluators as <code>R-433</code>. Players not on one of the two teams are not dressed for that session: evaluators don't see them and cannot score them. Skills sessions ignore teams.</p>
+        <p style="margin:0">Every player on a team wears the team colour, whatever their default jersey: White 433 on a Red team shows to evaluators as <code>R-433</code>. Players not on a team or group that is on the ice are not dressed for that session: evaluators don't see them and cannot score them.</p>
       </div>
       <form id="teamForm" class="row" style="margin-bottom:.75rem">
         <div class="field grow"><label for="teamName">New team</label><input id="teamName" type="text" maxlength="30" placeholder="Team 1" required></div>
@@ -104,8 +104,8 @@
       <div class="small muted" style="margin-bottom:.75rem">
         <p style="margin-bottom:.35rem">One row per ice time. Add a session with the form below, then edit it in the table: label, date and type save as soon as you leave the field. Sessions are listed by date, and evaluators pick the session they are scoring from a dropdown that defaults to today's.</p>
         <ol style="margin:0 0 .35rem 1.2rem;padding:0">
-          <li><b>Skills sessions</b>: everyone is on the ice. Set who wears what in <i>Attendance &amp; jerseys</i> (for example all forwards → White, all defence → Red).</li>
-          <li><b>Scrimmages and games</b>: full ice, exactly two teams. In <i>Teams on the ice</i> pick a team and press <i>+ team</i>, then the second one. The colour comes from the team; change it here only if that team wears something else for that one session. Players not on either team are not dressed and are hidden from evaluators. Remove a team with its ✕ to swap it.</li>
+          <li><b>Skills sessions</b>: if you split the players into groups, make each group a team in <i>Teams</i> and put the one that is skating on the session with <i>+ group</i>, leaving the colour as <i>own colours</i>: players wear their default jersey from the Players list. With no group, everyone is on the ice. If a skills night is dressed differently, set it in <i>Attendance &amp; jerseys</i>.</li>
+          <li><b>Scrimmages and games</b>: full ice, exactly two teams. In <i>Teams on the ice</i> pick a team and press <i>+ team</i>, then the second one. The colour comes from the team; change it here only if that team wears something else for that one session. Players not on a team or group that is on the ice are not dressed and are hidden from evaluators. Remove one with its ✕ to swap it.</li>
           <li><b>Default jerseys</b> only matters when nothing else is set: it picks each player's primary or secondary colour as the fallback. Colours set in <i>Attendance &amp; jerseys</i> win over team colours, which win over this default.</li>
         </ol>
         <p style="margin:0">Evaluators always see the colour worn that session with the player's number; scores stay with the player whatever they wear.</p>
