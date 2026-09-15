@@ -190,6 +190,13 @@ tr.inactive td { opacity: .5; }
 .toolbar select { width: auto; min-width: 140px; }
 input[type=checkbox] { width: 24px; height: 24px; }
 .attend { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; }
+/* Collapsible setup cards */
+.card.collapsible > h2 { display: flex; align-items: center; gap: .5rem; cursor: pointer; user-select: none; margin: 0; }
+.card.collapsible > h2 .chev { display: inline-block; width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--border); background: var(--surface-2); text-align: center; line-height: 24px; font-size: .9rem; transition: transform .15s; }
+.card.collapsible.collapsed > h2 .chev { transform: rotate(-90deg); }
+.card.collapsible > h2 .count { font-weight: 500; color: var(--muted); font-size: .95rem; margin-left: auto; }
+.card.collapsible:not(.collapsed) > h2 { margin-bottom: .5rem; }
+.card.collapsible.collapsed > :not(h2) { display: none; }
 .team { border: 2px solid var(--border); border-radius: var(--radius); padding: .6rem .8rem; margin-bottom: .6rem; background: var(--surface); }
 .team summary { cursor: pointer; font-weight: 700; min-height: 40px; display: flex; align-items: center; gap: .6rem; }
 .team .roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .35rem; margin-top: .5rem; }

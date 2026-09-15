@@ -152,7 +152,7 @@ function renderAll() {
   $("tryoutName").textContent = t ? t.name : "No tryout yet";
   const pill = $("tryoutStatus");
   pill.textContent = t ? t.status : ""; pill.className = `pill ${t?.status === "open" ? "ok" : "bad"}`; pill.hidden = !t;
-  renderSetup(); renderRankings(); renderEvaluatorsTab(); 
+  renderSetup(); renderRankings(); renderEvaluatorsTab(); renderCardCounts();
   $("closeBtn").disabled = !t || t.status !== "open";
 }
 
@@ -906,6 +906,43 @@ $("closeBtn").addEventListener("click", async () => {
   await run(async () => { await gql(`mutation($tryoutId: ID!) { closeTryout(tryoutId: $tryoutId) { id status } }`, { tryoutId: state.tryout.id }); await loadAll(); }, "Tryout closed.");
 });
 
+// ----------------------------------------------------------------------------- Collapsible setup cards
+// Click a card's heading to fold it (remembered on this browser). A folded card shows a short count.
+const COLLAPSE_KEY = "ui:setup:collapsed";
+function initCollapsible() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}"); } catch { /* private mode */ }
+  for (const card of document.querySelectorAll("#tab-setup .card")) {
+    const h2 = card.querySelector(":scope > h2");
+    if (!h2 || !card.id) continue;
+    card.classList.add("collapsible");
+    const chev = el("span", { class: "chev", "aria-hidden": "true" }, "▾");
+    const count = el("span", { class: "count", "data-count": "" });
+    h2.prepend(chev); h2.append(count);
+    h2.setAttribute("role", "button"); h2.setAttribute("tabindex", "0");
+    const apply = (collapsed) => { card.classList.toggle("collapsed", collapsed); h2.setAttribute("aria-expanded", String(!collapsed)); };
+    apply(!!saved[card.id]);
+    const toggle = () => {
+      apply(!card.classList.contains("collapsed"));
+      saved[card.id] = card.classList.contains("collapsed");
+      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(saved)); } catch { /* ignore */ }
+    };
+    h2.addEventListener("click", (ev) => { if (ev.target.closest("summary, button, input, select, a")) return; toggle(); });
+    h2.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } });
+  }
+}
+/** Update the short counts shown next to card headings. */
+function renderCardCounts() {
+  const t = state.tryout;
+  const set = (id, text) => { const c = document.querySelector(`#${id} > h2 .count`); if (c) c.textContent = text; };
+  set("sessionsCard", t ? `${t.sessions.length} session${t.sessions.length === 1 ? "" : "s"}` : "");
+  set("playersCard", t ? `${t.players.filter((p) => p.active).length} active` : "");
+  set("teamsCard", t ? `${t.teams.length} team${t.teams.length === 1 ? "" : "s"}` : "");
+  set("evaluatorsCard", `${state.evaluators.length} login${state.evaluators.length === 1 ? "" : "s"}`);
+  const a = t?.sessions.find((s) => s.id === state.attendSessionId);
+  set("attendanceCard", a ? a.label : "");
+}
+
 // ----------------------------------------------------------------------------- Tabs + boot
 for (const tab of document.querySelectorAll(".tab")) {
   tab.addEventListener("click", () => {
@@ -915,6 +952,7 @@ for (const tab of document.querySelectorAll(".tab")) {
     if (tab.dataset.tab === "evaluators") renderEvaluatorsTab();
   });
 }
+initCollapsible();
 $("refreshBtn").addEventListener("click", () => run(loadAll, "Refreshed."));
 $("signOutBtn").addEventListener("click", () => { signOut(); location.replace("index.html"); });
 $("sDate").value = today();

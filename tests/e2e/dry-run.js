@@ -104,6 +104,16 @@ try {
   assert(playerRows === 12, `expected 12 players, saw ${playerRows}`);
   log("12 players added");
 
+  // Setup cards fold from their heading and remember it
+  await admin.click("#playersCard > h2");
+  assert(await admin.locator("#playersBody").isHidden(), "players table hidden when the card is collapsed");
+  assert(/12 active/.test(await admin.locator("#playersCard > h2 .count").textContent()), "collapsed card shows a count");
+  await admin.reload();
+  await admin.locator("#playersCard.collapsed").waitFor({ timeout: 20000 });
+  await admin.click("#playersCard > h2");
+  await admin.locator("#playersBody tr").first().waitFor();
+  log("players card collapses, survives reload, expands again");
+
   // ------------------------------------------------------------------ Evaluator not yet on the list: read-only
   const evalCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const ev = await evalCtx.newPage();
