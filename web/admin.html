@@ -46,20 +46,6 @@
       </details>
     </div>
 
-    <div class="card" id="sessionsCard">
-      <h2>Sessions (ice times)</h2>
-      <p class="small muted">Label, date and type can be changed right in the table; they save as soon as you leave the field. Each session says which of the two jersey colours players wear. Skills sessions normally use the primary colour; scrimmages often use the secondary one. Evaluators see the colour worn that session; scores always stay with the player.</p>
-      <div class="table-wrap" style="margin-bottom:.75rem"><table><thead><tr><th>#</th><th>Label</th><th>Date</th><th>Type</th><th>Teams on the ice</th><th>Default jerseys</th><th></th></tr></thead><tbody id="sessionsBody"></tbody></table></div>
-      <form id="sessionForm" class="row">
-        <div class="field grow"><label for="sLabel">Label</label><input id="sLabel" type="text" maxlength="60" placeholder="Skate 2 – Scrimmage" required></div>
-        <div class="field"><label for="sDate">Date</label><input id="sDate" type="date" required></div>
-        <div class="field"><label for="sType">Type</label>
-          <select id="sType"><option value="skills">skills</option><option value="scrimmage">scrimmage</option><option value="game">game</option></select></div>
-        <div class="field"><label for="sJersey">Jerseys</label>
-          <select id="sJersey"><option value="primary">primary colour</option><option value="secondary">secondary colour</option></select></div>
-        <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Add session</button></div>
-      </form>
-    </div>
 
     <div class="card" id="playersCard">
       <h2>Players</h2>
@@ -102,6 +88,21 @@
         <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Create team</button></div>
       </form>
       <div id="teamsList"></div>
+    </div>
+
+    <div class="card" id="sessionsCard">
+      <h2>Sessions (ice times)</h2>
+      <p class="small muted">Label, date and type can be changed right in the table; they save as soon as you leave the field. Each session says which of the two jersey colours players wear. Skills sessions normally use the primary colour; scrimmages often use the secondary one. Evaluators see the colour worn that session; scores always stay with the player.</p>
+      <div class="table-wrap" style="margin-bottom:.75rem"><table><thead><tr><th>#</th><th>Label</th><th>Date</th><th>Type</th><th>Teams on the ice</th><th>Default jerseys</th><th></th></tr></thead><tbody id="sessionsBody"></tbody></table></div>
+      <form id="sessionForm" class="row">
+        <div class="field grow"><label for="sLabel">Label</label><input id="sLabel" type="text" maxlength="60" placeholder="Skate 2 – Scrimmage" required></div>
+        <div class="field"><label for="sDate">Date</label><input id="sDate" type="date" required></div>
+        <div class="field"><label for="sType">Type</label>
+          <select id="sType"><option value="skills">skills</option><option value="scrimmage">scrimmage</option><option value="game">game</option></select></div>
+        <div class="field"><label for="sJersey">Jerseys</label>
+          <select id="sJersey"><option value="primary">primary colour</option><option value="secondary">secondary colour</option></select></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" type="submit">Add session</button></div>
+      </form>
     </div>
 
     <div class="card" id="attendanceCard">
