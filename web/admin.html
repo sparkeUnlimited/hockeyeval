@@ -79,7 +79,16 @@
 
     <div class="card" id="teamsCard">
       <h2>Teams</h2>
-      <p class="small muted">Teams are groups of players you reuse across scrimmages and games. Give each team a colour: every player on it wears that colour, whatever their own default jersey (White 433 on a Red team shows as <code>R-433</code>). Make as many teams as you need (a player can be on more than one), then on each scrimmage session pick which teams are on the ice; the colour is filled in from the team and can be changed for that session only. Players not on a playing team are not dressed for that session: evaluators don't see them and cannot score them.</p>
+      <div class="small muted" style="margin-bottom:.75rem">
+        <p style="margin-bottom:.35rem">Teams are groups of players you reuse for scrimmages and games. Every scrimmage or game is full ice with exactly two teams.</p>
+        <ol style="margin:0 0 .35rem 1.2rem;padding:0">
+          <li><b>Create a team</b> below: give it a name and its jersey colour.</li>
+          <li><b>Open the team row</b> (the ▾ chevron or the <i>players · pick</i> pill) and tick the players on it by number. A player can be on more than one team.</li>
+          <li>On the team row you can <b>rename</b> it, <b>change its colour</b>, or <b>Delete team</b>.</li>
+          <li>In <b>Sessions</b> below, put two teams on each scrimmage or game with <i>+ team</i>. The colour comes from the team; change it there only if that team wears something else for that one session.</li>
+        </ol>
+        <p style="margin:0">Every player on a team wears the team colour, whatever their default jersey: White 433 on a Red team shows to evaluators as <code>R-433</code>. Players not on one of the two teams are not dressed for that session: evaluators don't see them and cannot score them. Skills sessions ignore teams.</p>
+      </div>
       <form id="teamForm" class="row" style="margin-bottom:.75rem">
         <div class="field grow"><label for="teamName">New team</label><input id="teamName" type="text" maxlength="30" placeholder="Team 1" required></div>
         <div class="field"><label for="teamColour">Team colour</label>
