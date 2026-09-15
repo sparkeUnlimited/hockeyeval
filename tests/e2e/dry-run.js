@@ -226,6 +226,10 @@ try {
   const t1 = admin.locator("#teamsList details.team").filter({ has: admin.locator('input[value="Team 1"]') });
   assert((await t1.locator('label[data-roster="B-08"]').textContent()).trim() === "8F", "roster shows number and position only");
   assert(await t1.locator('label[data-roster="B-08"].on').count() === 1, "member label is marked");
+  // A stale per-player colour on the scrimmage (W-14 -> Yellow) must not survive a team assignment
+  await admin.selectOption("#aSession", { index: 1 });
+  await admin.locator('#attendGrid label[data-attend="W-14"] select').selectOption("Yellow");
+  await expectMsg(admin, "Jersey colours updated");
   const scrim = admin.locator("#sessionsBody tr").filter({ has: admin.locator('input[value="Skate 2 – Scrimmage"]') });
   await scrim.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 1" });
   assert((await scrim.locator('select[aria-label^="Colour for the team"]').inputValue()) === "Red", "session colour pre-filled from the team");
@@ -253,6 +257,7 @@ try {
   log("skills session can carry a group in default jerseys; removed again");
   await admin.selectOption("#aSession", { index: 1 });
   assert(/1 not dressed/.test(await admin.locator("#aSummary").textContent()), "B-17 is not dressed for the scrimmage");
+  assert(/team colours/.test(await admin.locator("#aSummary").textContent()), `stale per-player colour cleared by the team assignment: ${await admin.locator("#aSummary").textContent()}`);
   log("teams created; scrimmage = Team 1 (Red) vs Team 2 (White); B-17 not dressed");
 
   // Primary colour change before any scores: B-10 (on Team 1) -> Green -> G-10, roster follows

@@ -563,7 +563,7 @@ function renderAttendance() {
   }
   }
   const dressed = players.filter((p) => !hasTeams || (p.playerNumber in session.teamColours)).length;
-  $("aSummary").textContent = `${dressed - absent} present · ${absent} absent${hasTeams ? ` · ${players.length - dressed} not dressed` : ""} · ${overrides ? `${overrides} colour${overrides === 1 ? "" : "s"} set per player` : hasTeams ? "team colours" : `default ${session.jersey} jerseys`}`;
+  $("aSummary").textContent = `${dressed - absent} present · ${absent} absent${hasTeams ? ` · ${players.length - dressed} not dressed` : ""} · ${overrides ? `${overrides} colour${overrides === 1 ? "" : "s"} set per player${hasTeams ? " (overriding team colours; Reset to default jerseys clears them)" : ""}` : hasTeams ? "team colours" : `default ${session.jersey} jerseys`}`;
   const clash = jerseyClashes(session);
   $("aClash").hidden = !clash.length;
   $("aClash").textContent = clash.length ? `Two players would show as the same code: ${clash.join(", ")}. Give one of them a different colour.` : "";
@@ -719,6 +719,19 @@ async function setSessionTeams(session, teams, okText) {
       { tryoutId: state.tryout.id, sessionId: session.id, teams: teams.map((t) => ({ teamId: t.teamId, colour: t.colour })) });
     session.teams = data.setSessionTeams.teams;
     deriveTeams(session, state.tryout.teams);
+    // A team's colour should win for its players: drop any per-player colour left over from before
+    // (e.g. a bulk "all forwards -> White" done earlier). Borrowed jerseys can still be set afterwards.
+    if (session.teamColours && session.colours) {
+      const next = { ...session.colours };
+      let dropped = 0;
+      // Only where the team actually sets a colour: a skills group in "default jerseys" leaves per-player colours alone.
+      for (const pn of Object.keys(next)) if (session.teamColours[pn]) { delete next[pn]; dropped += 1; }
+      if (dropped) {
+        const r = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $colours: AWSJSON!) { setSessionColours(tryoutId: $tryoutId, sessionId: $sessionId, colours: $colours) { id colours } }`,
+          { tryoutId: state.tryout.id, sessionId: session.id, colours: JSON.stringify(next) });
+        session.colours = JSON.parse(r.setSessionColours.colours || "{}");
+      }
+    }
     state.attendSessionId = session.id;
     renderAll();
   }, okText || (teams.length ? `${session.label}: ${teams.map((t) => `${state.tryout.teams.find((x) => x.id === t.teamId)?.name || "?"}${t.colour ? ` in ${t.colour}` : ""}`).join(session.type === "skills" ? " and " : " vs ")}.` : `${session.label}: no teams, everyone plays.`));
