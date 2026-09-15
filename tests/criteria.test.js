@@ -10,6 +10,7 @@ test("rubric shape: scale has 1..5, tiers A/B/C/X, every criterion has key/label
   for (const c of CRITERIA) {
     assert.ok(c.key && c.label && c.help, `criterion ${c.key} missing fields`);
     assert.ok(Array.isArray(c.for) && c.for.length > 0);
+    assert.ok(typeof c.short === "string" && c.short.length <= 10, `criterion ${c.key} needs a short heading`);
     assert.ok(c.weight > 0);
   }
   const keys = CRITERIA.map((c) => c.key);

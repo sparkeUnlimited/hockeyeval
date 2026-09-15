@@ -182,9 +182,18 @@ textarea { min-height: 88px; resize: vertical; }
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 2px solid var(--border); border-radius: var(--radius); }
 table { border-collapse: collapse; width: 100%; font-size: .95rem; }
 th, td { padding: .5rem .6rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
-th { background: var(--surface); position: sticky; top: 0; z-index: 1; font-weight: 700; }
+/* Headings may wrap to two lines so wide tables (one column per criterion) fit without cutting off. */
+th { background: var(--surface); position: sticky; top: 0; z-index: 1; font-weight: 700; white-space: normal; max-width: 7.5em; line-height: 1.15; vertical-align: bottom; }
+/* Dense tables: one column per criterion. Tighter cells so they fit a laptop screen. */
+#rankTable th, #rankTable td, #tab-evaluators table th, #tab-evaluators table td { padding: .3rem .3rem; font-size: .8rem; }
+#rankTable th, #tab-evaluators table th { max-width: 5.5em; }
+/* Always-visible scrollbar: the tables scroll sideways when they still don't fit. */
+.table-wrap { scrollbar-gutter: stable; }
+.table-wrap::-webkit-scrollbar { height: 12px; width: 12px; }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; border: 3px solid var(--surface); }
+.table-wrap::-webkit-scrollbar-track { background: var(--surface); }
 th.sortable { cursor: pointer; user-select: none; }
-th.sortable::after { content: " ↕"; color: var(--muted); font-weight: 400; }
+th.sortable { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; } /* tap to sort; arrow only on the sorted column */
 th.sorted-asc::after { content: " ↑"; color: var(--fg); } th.sorted-desc::after { content: " ↓"; color: var(--fg); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr.disagree td { background: color-mix(in srgb, var(--warn) 22%, transparent); }

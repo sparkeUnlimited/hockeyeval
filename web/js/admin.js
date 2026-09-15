@@ -803,7 +803,7 @@ function rankColumns(position) {
     { key: "spread", label: "Spread", num: true },
     { key: "tiers.A", label: "A", num: true }, { key: "tiers.B", label: "B", num: true },
     { key: "tiers.C", label: "C", num: true }, { key: "tiers.X", label: "X", num: true },
-    ...crits.map((c) => ({ key: `crit.${c.key}`, label: c.label, num: true, crit: c.key })),
+    ...crits.map((c) => ({ key: `crit.${c.key}`, label: c.short || c.label, title: c.label, num: true, crit: c.key })),
   ];
 }
 const getPath = (obj, path) => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -827,7 +827,7 @@ function renderRankings() {
   const cols = rankColumns(state.rank.position);
   const tr = el("tr");
   for (const c of cols) {
-    const th = el("th", { class: `sortable${c.num ? " num" : ""}${state.rank.sortKey === c.key ? ` sorted-${state.rank.sortDir}` : ""}`,
+    const th = el("th", { class: `sortable${c.num ? " num" : ""}${state.rank.sortKey === c.key ? ` sorted-${state.rank.sortDir}` : ""}`, title: c.title || null,
       onclick: () => { if (state.rank.sortKey === c.key) state.rank.sortDir = state.rank.sortDir === "asc" ? "desc" : "asc"; else { state.rank.sortKey = c.key; state.rank.sortDir = c.num ? "desc" : "asc"; } renderRankings(); } }, c.label);
     tr.append(th);
   }
@@ -896,8 +896,9 @@ function renderEvaluatorsTab() {
   const head = $("vHead"), body = $("vBody"); head.innerHTML = ""; body.innerHTML = "";
   $("vTitle").textContent = state.view.evaluatorId ? `Scores by ${evaluatorName(state.view.evaluatorId)}` : "Scores";
   const pm = playerMap(), sm = sessionMap();
-  const cols = ["Player", "Worn as", "Pos", "Session", ...CRITERIA.map((c) => c.label), "Overall", "Tier", "Notes"];
-  head.append(el("tr", {}, ...cols.map((c, i) => el("th", { class: i >= 4 && i < cols.length - 2 ? "num" : "" }, c))));
+  const cols = ["Player", "Worn as", "Pos", "Session", ...CRITERIA.map((c) => c.short || c.label), "Overall", "Tier", "Notes"];
+  const titles = [null, null, null, null, ...CRITERIA.map((c) => c.label), null, null, null];
+  head.append(el("tr", {}, ...cols.map((c, i) => el("th", { class: i >= 4 && i < cols.length - 2 ? "num" : "", title: titles[i] }, c))));
   const mine = state.evals.filter((e) => e.evaluatorId === state.view.evaluatorId && (state.view.sessionId === "all" || e.sessionId === state.view.sessionId))
     .sort((a, b) => a.playerNumber.localeCompare(b.playerNumber) || a.sessionId.localeCompare(b.sessionId));
   for (const e of mine) {
