@@ -155,8 +155,9 @@ try {
   await rowB03.locator("select").last().selectOption("F"); // position select is the last select in the row
   await expectMsg(admin, "B-03 updated");
   assert((await admin.locator('#playersBody tr[data-player="B-03"] select').last().inputValue()) === "F", "position change persisted");
-  await rowB03.locator("select").first().selectOption("Orange"); // secondary colour dropdown
+  await rowB03.locator('select[aria-label^="Secondary colour"]').selectOption("Orange");
   await expectMsg(admin, "B-03 updated");
+  assert((await rowB03.locator('select[aria-label^="Secondary colour"]').inputValue()) === "Orange", "secondary colour persisted (primary untouched)");
   // add-one form defaults: White / Red, then delete that player again (no scores yet)
   assert((await admin.locator("#teamColour").inputValue()) === "", "new team defaults to no colour (default jerseys)");
   assert((await admin.locator("#pColour").inputValue()) === "White", "primary defaults to White");
@@ -251,6 +252,16 @@ try {
   await admin.selectOption("#aSession", { index: 1 });
   assert(/1 not dressed/.test(await admin.locator("#aSummary").textContent()), "B-17 is not dressed for the scrimmage");
   log("teams created; scrimmage = Team 1 (Red) vs Team 2 (White); B-17 not dressed");
+
+  // Primary colour change before any scores: B-10 (on Team 1) -> Green -> G-10, roster follows
+  const rowB10 = admin.locator('#playersBody tr[data-player="B-10"]');
+  await rowB10.locator('select[aria-label^="Primary colour"]').selectOption("Green");
+  await expectMsg(admin, "B-10 is now G-10.");
+  await admin.locator('#playersBody tr[data-player="G-10"]').waitFor({ timeout: 20000 });
+  assert((await admin.locator('#playersBody tr[data-player="B-10"]').count()) === 0, "old code gone");
+  const t1b = admin.locator("#teamsList details.team").filter({ has: admin.locator('input[value="Team 1"]') });
+  assert(await t1b.locator('label[data-roster="G-10"] input').isChecked(), "Team 1 roster now lists G-10");
+  log("B-10 primary colour changed to Green -> G-10; team roster carried over");
 
   // ------------------------------------------------------------------ Evaluator: score 6 online
   await ev.reload();
@@ -356,7 +367,9 @@ try {
   await expectMsg(admin, "Refreshed");
   await admin.locator('#playersBody tr[data-player="B-01"] button', { hasText: "Delete" }).click();
   await expectMsg(admin, "already has scores");
-  log("delete refused for a player with scores");
+  await admin.locator('#playersBody tr[data-player="B-01"] select[aria-label^="Primary colour"]').selectOption("Green");
+  await expectMsg(admin, "code cannot change");
+  log("delete and primary-colour change refused for a player with scores");
 
   // ------------------------------------------------------------------ Admin: rankings show 9
   await admin.click("#refreshBtn");

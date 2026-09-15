@@ -222,9 +222,21 @@ function renderSetup() {
     tagBox.checked = p.tag === "AA";
     tagBox.addEventListener("change", () => updatePlayer(p, { tag: tagBox.checked ? "AA" : "" }));
 
+    // Primary colour: changing it changes the player's code. Only possible before they have scores.
+    const c1Sel = el("select", { class: "colour-select sm", "aria-label": `Primary colour for ${p.playerNumber}` });
+    const c1Other = el("input", { type: "text", maxlength: "20", placeholder: "New colour", hidden: true, style: "margin-top:.3rem", "aria-label": `New primary colour for ${p.playerNumber}` });
+    fillColourSelect(c1Sel, { value: p.colour });
+    c1Sel.addEventListener("change", () => {
+      if (c1Sel.value === OTHER) { c1Other.hidden = false; c1Other.focus(); return; }
+      changePlayerColour(p, c1Sel.value);
+    });
+    const commitC1Other = () => { const v = c1Other.value.trim(); if (v) changePlayerColour(p, v); };
+    c1Other.addEventListener("change", commitC1Other);
+    c1Other.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitC1Other(); } });
+
     pb.append(el("tr", { class: p.active ? "" : "inactive", "data-player": p.playerNumber },
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", style: "margin-left:.4rem" }, p.tag) : null),
-      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), p.colour),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), c1Sel, c1Other),
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour2 || "")}` }), c2Sel, c2Other),
       el("td", { class: "num" }, String(p.number)), el("td", {}, posSel),
       el("td", {}, tagBox),
@@ -440,6 +452,39 @@ async function updatePlayer(p, patch) {
     Object.assign(p, data.updatePlayer);
     renderAll();
   }, `${p.playerNumber} updated.`);
+}
+
+/** Change the primary colour = the player's code. Server moves the row; we then carry references over. */
+async function changePlayerColour(p, colour) {
+  const code = `${colour.charAt(0).toUpperCase()}-${String(p.number).padStart(2, "0")}`;
+  if (code === p.playerNumber) { renderSetup(); return; }
+  if (!confirm(`Change ${p.playerNumber}'s primary colour to ${colour}? Their code becomes ${code} everywhere. Only possible while they have no scores.`)) { renderSetup(); return; }
+  const oldPn = p.playerNumber;
+  await run(async () => {
+    const data = await gql(`mutation($tryoutId: ID!, $playerNumber: ID!, $colour: String!) {
+      changePlayerColour(tryoutId: $tryoutId, playerNumber: $playerNumber, colour: $colour) { playerNumber colour colour2 number position active tag } }`,
+      { tryoutId: state.tryout.id, playerNumber: oldPn, colour });
+    const moved = data.changePlayerColour;
+    // Carry the old code over in team rosters, attendance lists and per-session colours.
+    for (const team of state.tryout.teams) {
+      if (team.players.includes(oldPn)) {
+        const players = team.players.map((x) => (x === oldPn ? moved.playerNumber : x));
+        const r = await gql(`mutation($tryoutId: ID!, $teamId: ID!, $players: [ID!]!) { setTeamPlayers(tryoutId: $tryoutId, teamId: $teamId, players: $players) { id players } }`, { tryoutId: state.tryout.id, teamId: team.id, players });
+        team.players = r.setTeamPlayers.players;
+      }
+    }
+    for (const sess of state.tryout.sessions) {
+      if ((sess.absent || []).includes(oldPn)) {
+        await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $playerNumber: ID!, $present: Boolean!) { setAttendance(tryoutId: $tryoutId, sessionId: $sessionId, playerNumber: $playerNumber, present: $present) { id } }`, { tryoutId: state.tryout.id, sessionId: sess.id, playerNumber: oldPn, present: true });
+        await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $playerNumber: ID!, $present: Boolean!) { setAttendance(tryoutId: $tryoutId, sessionId: $sessionId, playerNumber: $playerNumber, present: $present) { id } }`, { tryoutId: state.tryout.id, sessionId: sess.id, playerNumber: moved.playerNumber, present: false });
+      }
+      if (sess.colours && oldPn in sess.colours) {
+        const next = { ...sess.colours }; next[moved.playerNumber] = next[oldPn]; delete next[oldPn];
+        await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $colours: AWSJSON!) { setSessionColours(tryoutId: $tryoutId, sessionId: $sessionId, colours: $colours) { id } }`, { tryoutId: state.tryout.id, sessionId: sess.id, colours: JSON.stringify(next) });
+      }
+    }
+    await loadAll();
+  }, `${oldPn} is now ${code}.`);
 }
 
 async function deletePlayer(p) {

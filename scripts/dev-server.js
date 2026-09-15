@@ -97,9 +97,15 @@ async function execute(req) {
     }
     case "TransactWriteItems": {
       const keys = [];
+      for (const t of req.transactItems) { // check all conditions first (all-or-nothing)
+        const key = fromMapValues(t.key);
+        try { checkCondition(t.condition, db.get(k(key.PK, key.SK))); }
+        catch (e) { const err = new Error("Transaction cancelled, please refer cancellation reasons for specific reasons"); err.type = "DynamoDB:TransactionCanceledException"; throw err; }
+      }
       for (const t of req.transactItems) {
         const key = fromMapValues(t.key);
         if (t.operation === "PutItem") db.set(k(key.PK, key.SK), { ...key, ...fromMapValues(t.attributeValues || {}) });
+        else if (t.operation === "DeleteItem") db.delete(k(key.PK, key.SK));
         keys.push(key);
       }
       return { keys };
@@ -148,13 +154,14 @@ const FIELDS = {
   setTeamPlayers: [await R("Mutation.setTeamPlayers.js")],
   setSessionTeams: [await R("Mutation.setSessionTeams.js")],
   deletePlayer: [await R("Mutation.deletePlayer.1.checkNoScores.js"), await R("Mutation.deletePlayer.2.delete.js")],
+  changePlayerColour: [await R("Mutation.changePlayerColour.1.checkNoScores.js"), await R("Mutation.changePlayerColour.2.get.js"), await R("Mutation.changePlayerColour.3.move.js")],
   setEvaluatorAccess: [await R("Mutation.setEvaluatorAccess.js")],
   closeTryout: [await R("Mutation.closeTryout.1.close.js"), await R("Fn.getTryout.js")],
   createEvaluator: [await R("Lambda.adminOps.js")],
   deleteEvaluator: [await R("Lambda.adminOps.js")],
   exportUrl: [await R("Lambda.adminOps.js")],
 };
-const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "setAttendance", "setSessionColours", "createTeam", "updateTeam", "deleteTeam", "setTeamPlayers", "setSessionTeams", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
+const ADMIN_FIELDS = new Set(["allEvaluations", "evaluators", "createTryout", "addSession", "upsertPlayers", "updateSession", "setPlayerActive", "updatePlayer", "deletePlayer", "changePlayerColour", "setAttendance", "setSessionColours", "createTeam", "updateTeam", "deleteTeam", "setTeamPlayers", "setSessionTeams", "setEvaluatorAccess", "createEvaluator", "deleteEvaluator", "closeTryout", "exportUrl"]);
 
 async function runField(field, args, identity) {
   const ctx = { args, arguments: args, identity, stash: {}, prev: { result: null }, result: null, error: null, info: { fieldName: field, parentTypeName: "" } };

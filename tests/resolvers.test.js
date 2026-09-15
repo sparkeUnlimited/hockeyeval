@@ -333,6 +333,7 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.setSessionTeams.js", { tryoutId: TRYOUT, sessionId: SESSION, teams: [{ teamId: "team1", colour: "Red" }] }],
       ["Mutation.deletePlayer.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
       ["Mutation.deletePlayer.2.delete.js", { tryoutId: TRYOUT, playerNumber: "W-14" }],
+      ["Mutation.changePlayerColour.1.checkNoScores.js", { tryoutId: TRYOUT, playerNumber: "W-14", colour: "Red" }],
       ["Mutation.setEvaluatorAccess.js", { tryoutId: TRYOUT, evaluatorId: EVALUATOR_SUB, enabled: true }],
       ["Mutation.closeTryout.1.close.js", { tryoutId: TRYOUT }],
       ["Lambda.adminOps.js", { email: "e@example.com", displayName: "Evaluator 1" }],
@@ -618,6 +619,34 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     assert.deepEqual(fromMapValues(d.key), { PK: `TRYOUT#${TRYOUT}`, SK: "PLAYER#W-14" });
     assert.equal(d.condition.expression, "attribute_exists(PK)");
     assert.equal(del.response(ctx({ args, result: { PK: "x" } })), "W-14");
+  });
+
+  test("changePlayerColour: refuses with scores, moves the row atomically to the new code", async () => {
+    const check = await loadResolver("Mutation.changePlayerColour.1.checkNoScores.js");
+    const get = await loadResolver("Mutation.changePlayerColour.2.get.js");
+    const move = await loadResolver("Mutation.changePlayerColour.3.move.js");
+    const args = { tryoutId: TRYOUT, playerNumber: "W-14", colour: "red" };
+    assert.equal(check.request(ctx({ identity: adminIdentity(), args })).index, "GSI1");
+    throwsType(() => check.response(ctx({ args, result: { items: [], scannedCount: 1 } })), "HasScores", /cannot change/);
+    throwsType(() => check.request(ctx({ identity: adminIdentity(), args: { ...args, colour: "R3d" } })), "BadRequest", /colour/);
+    const c = ctx({ identity: adminIdentity(), args });
+    assert.deepEqual(fromMapValues(get.request(c).key), { PK: `TRYOUT#${TRYOUT}`, SK: "PLAYER#W-14" });
+    c.result = { tryoutId: TRYOUT, playerNumber: "W-14", colour: "White", colour2: "Green", number: 14, position: "D", active: true, tag: "AA" };
+    get.response(c);
+    const req = move.request(c);
+    assert.equal(req.operation, "TransactWriteItems");
+    const [put, del] = req.transactItems;
+    assert.equal(put.operation, "PutItem");
+    assert.deepEqual(fromMapValues(put.key), { PK: `TRYOUT#${TRYOUT}`, SK: "PLAYER#R-14" });
+    const attrs = fromMapValues(put.attributeValues);
+    assert.equal(attrs.colour, "Red"); assert.equal(attrs.colour2, "Green"); assert.equal(attrs.tag, "AA"); assert.equal(attrs.position, "D");
+    assert.equal(put.condition.expression, "attribute_not_exists(PK)");
+    assert.equal(del.operation, "DeleteItem");
+    assert.deepEqual(fromMapValues(del.key), { PK: `TRYOUT#${TRYOUT}`, SK: "PLAYER#W-14" });
+    assert.equal(move.response(ctx({ stash: c.stash, result: { keys: [] } })).playerNumber, "R-14");
+    throwsType(() => move.response(ctx({ stash: c.stash, error: { message: "x", type: "DynamoDB:TransactionCanceledException" } })), "Conflict", /already exists/);
+    const same = ctx({ identity: adminIdentity(), args: { ...args, colour: "White" }, stash: c.stash });
+    throwsType(() => move.request(same), "BadRequest", /already/);
   });
 
   test("closeTryout sets status=closed and stashes the id for the getTryout step", async () => {

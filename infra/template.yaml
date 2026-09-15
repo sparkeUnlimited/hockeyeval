@@ -321,6 +321,18 @@ Resources:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
           CodeUri: ./.build/resolvers/Mutation.deletePlayer.2.delete.js
+        colourCheckNoScores:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.changePlayerColour.1.checkNoScores.js
+        colourGetPlayer:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.changePlayerColour.2.get.js
+        colourMovePlayer:
+          Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+          DataSource: TableDs
+          CodeUri: ./.build/resolvers/Mutation.changePlayerColour.3.move.js
         closeTryout:
           Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
           DataSource: TableDs
@@ -384,6 +396,10 @@ Resources:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js
             Pipeline: [checkNoScores, deletePlayerRow]
+          changePlayerColour:
+            Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
+            CodeUri: ./.build/resolvers/Pipeline.passthrough.js
+            Pipeline: [colourCheckNoScores, colourGetPlayer, colourMovePlayer]
           setAttendance:
             Runtime: { Name: APPSYNC_JS, Version: "1.0.0" }
             CodeUri: ./.build/resolvers/Pipeline.passthrough.js

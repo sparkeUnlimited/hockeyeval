@@ -66,8 +66,10 @@ CSV and paste it. The app refuses any other layout, so a roster with names canno
 - **Delete** removes a player entered by mistake or with the wrong number, as long as nobody has scored them yet.
   After that the app refuses and you *Release* them instead (they disappear from evaluators and rankings, scores
   kept; *Reinstate* brings them back).
-- Number and primary colour cannot be edited because they are the player's identity for the whole tryout: delete
-  and re-add if one is wrong.
+- **Primary colour** is a dropdown as well, but note it is part of the player's code: White 433 becomes `R-433`
+  everywhere (teams, attendance, session colours are carried over). The app allows it only while the player has
+  no scores; after that, release them and add the new code.
+- The number cannot be edited: delete and re-add (before any scores) if it is wrong.
 
 ### 4. Make the teams and groups
 
@@ -291,8 +293,9 @@ logins cannot create stray evaluations. Old tryouts stay in storage but are no l
   for a skills night, the bulk row or the per-player dropdowns in *Attendance & jerseys*. Nothing about the scores
   changes when colours do.
 - **An ice time moved**: change the date on the session row. Evaluators see it in their picker on reload.
-- **A player has the wrong position**: change it on their row in the Players table. Wrong number: *Delete* the
-  player if nobody has scored them yet, otherwise *Release* them, and add the correct one.
+- **A player has the wrong position or primary colour**: change it on their row in the Players table (the colour
+  only before they have scores). Wrong number: *Delete* the player if nobody has scored them yet, otherwise
+  *Release* them, and add the correct one.
 - **Two colours start with the same letter**: the app blocks it. Rename one colour (e.g. `Dark` for black).
 - **An evaluator's phone died mid-skate**: their scores up to that moment are on the phone and will sync when it
   is back on and connected, even days later. They can also switch phones and keep scoring; the two devices'

@@ -163,6 +163,9 @@ type Mutation {
     @aws_auth(cognito_groups: ["admin"])
   # Remove a player that has no scores yet (wrong number, entered twice). Players with scores must be released.
   deletePlayer(tryoutId: ID!, playerNumber: ID!): ID! @aws_auth(cognito_groups: ["admin"])
+  # Change a player's primary colour, i.e. their code (W-433 -> R-433). Only while they have no scores;
+  # the row is moved atomically. Team rosters and session lists are updated by the client afterwards.
+  changePlayerColour(tryoutId: ID!, playerNumber: ID!, colour: String!): Player! @aws_auth(cognito_groups: ["admin"])
   # Lambda-backed (Cognito AdminCreateUser). Cognito emails the temporary password.
   createEvaluator(email: AWSEmail!, displayName: String!): EvaluatorProfile!
     @aws_auth(cognito_groups: ["admin"])
