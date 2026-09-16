@@ -213,6 +213,11 @@ rankings*, changes a player's jersey from the *Players* panel; the convenor adds
 scores; the rankings show all 9 with the Sessions column, AA-only filter and the cut line (including the tie
 rule); deleting or recolouring a scored player is refused. It saves screenshots into `docs/`.
 
+Layout is checked in a mobile emulation at 393 px (iPhone 14 Pro): every screen and panel measures exactly the
+viewport width, so the page never scrolls sideways; only tables, colour chips and tabs scroll inside their own
+box. Dropdowns and inputs are capped at the available width for that reason. On laptops the scoring sheet is two
+columns; the Players and My rankings panels are single-column.
+
 Resolvers were also checked against the real APPSYNC_JS runtime with `aws appsync evaluate-code` (no regex
 literals, no classic `for`, no `++`, no comparator sorts, no `continue`). If you edit a resolver, run
 `cd infra && npx cdk synth` and re-check with `evaluate-code` before deploying.

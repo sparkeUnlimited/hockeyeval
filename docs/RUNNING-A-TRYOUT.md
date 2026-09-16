@@ -352,5 +352,8 @@ logins cannot create stray evaluations. Old tryouts stay in storage but are no l
 - **An evaluator's phone died mid-skate**: their scores up to that moment are on the phone and will sync when it
   is back on and connected, even days later. They can also switch phones and keep scoring; the two devices'
   scores combine per player (the most recent save wins).
+- **The page slides sideways on a phone, or a panel looks squeezed on a laptop**: an old copy of the app is
+  cached. Reload the page (pull down on the phone); the current version keeps the page fixed and only scrolls
+  tables and chips inside their own box.
 - **The dot stays red after the Wi-Fi is back**: tap it. "Sign in again" means the login expired; "rejected" shows
   the reason (a closed tryout, a disabled evaluator, or a player marked absent or not dressed).
