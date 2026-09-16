@@ -117,6 +117,7 @@ try {
   // ------------------------------------------------------------------ Evaluator not yet on the list: read-only
   const evalCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const ev = await evalCtx.newPage();
+  ev.on("dialog", (d) => d.accept()); // confirm() on jersey changes
   if (MOCK) {
     // In mock mode the evaluator login is created through the admin UI (which also adds it to the tryout);
     // sign the evaluator in first so we can see the "not on the list" state before that happens.
@@ -384,6 +385,25 @@ try {
   await ev.click("#myRankDone");
   await ev.locator("#myRank").waitFor({ state: "hidden" });
   log("evaluator's own rankings shown and filtered");
+
+  // Players panel: evaluator changes what W-07 is wearing tonight (confirmed); everyone sees G-07
+  await ev.selectOption("#sessionSelect", { index: 0 });
+  await ev.locator('.player[aria-label^="W-07"]').waitFor({ timeout: 10000 });
+  await ev.click("#playersBtn");
+  await ev.locator("#playersPanel").waitFor({ state: "visible" });
+  assert((await ev.locator("#playersRows tr").count()) === 12, "players panel lists all 12 active players");
+  assert(/absent/.test(await ev.locator('#playersRows tr[data-player="W-12"]').textContent()), "absent player marked in the list");
+  await ev.locator('#playersRows tr[data-player="W-07"] select').selectOption("Green");
+  await ev.waitForFunction(() => document.querySelector('#playersRows tr[data-player="W-07"] select')?.value === "Green" && document.querySelector('#playersRows tr[data-player="W-07"] .swatch + select'), null, { timeout: 20000 });
+  await ev.waitForFunction(() => /G-07/.test(document.querySelector('#playersRows tr[data-player="W-07"] td:nth-child(4)')?.textContent || "") || document.querySelector('#playersRows tr[data-player="W-07"] select')?.value === "Green", null, { timeout: 20000 });
+  await ev.click("#playersDone");
+  await ev.locator('.player[aria-label^="G-07"]').waitFor({ timeout: 10000 });
+  await admin.click('.tab[data-tab="setup"]');
+  await admin.click("#refreshBtn");
+  await expectMsg(admin, "Refreshed");
+  await admin.selectOption("#aSession", { index: 0 });
+  assert(/G-07/.test(await admin.locator('#attendGrid label[data-attend="W-07"]').textContent()), "convenor's attendance grid shows the evaluator's jersey change");
+  log("evaluator changed W-07's jersey to Green for session 1; visible to the convenor");
 
   // ------------------------------------------------------------------ Admin scores as an evaluator too
   await admin.click('.tab[data-tab="evaluators"]');

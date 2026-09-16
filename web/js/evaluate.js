@@ -378,7 +378,7 @@ $("saveNext").addEventListener("click", () => {
 });
 $("saveClose").addEventListener("click", closeSheet);
 $("sheetClose").addEventListener("click", closeSheet);
-$("sheetBackdrop").addEventListener("click", () => { if (!$("myRank").hidden) closeMyRankings(); else closeSheet(); });
+$("sheetBackdrop").addEventListener("click", () => { if (!$("playersPanel").hidden) closePlayersPanel(); else if (!$("myRank").hidden) closeMyRankings(); else closeSheet(); });
 $("clearBtn").addEventListener("click", () => {
   if (!state.current || isReadOnly()) return;
   if (!confirm(`Clear all scores, tier and notes for ${state.current} in this session?`)) return;
@@ -525,6 +525,76 @@ $("myRankBtn").addEventListener("click", openMyRankings);
 $("myRankClose").addEventListener("click", closeMyRankings);
 $("myRankDone").addEventListener("click", closeMyRankings);
 for (const c of document.querySelectorAll("[data-mypos]")) c.addEventListener("click", () => { myPos = c.dataset.mypos; renderMyRankings(); });
+
+// ----------------------------------------------------------------------------- Players panel (read-only list; wearing colour is editable, shared with everyone)
+const COMMON_COLOURS = ["White", "Red", "Blue", "Green", "Yellow", "Orange", "Black", "Purple", "Grey", "Pink", "Teal", "Gold"];
+function knownColours() {
+  const set = new Set(COMMON_COLOURS);
+  for (const p of state.tryout?.players || []) { set.add(p.colour); if (p.colour2) set.add(p.colour2); }
+  for (const s of state.tryout?.sessions || []) for (const c of Object.values(s.colours || {})) set.add(c);
+  return [...set].sort((a, b) => COMMON_COLOURS.indexOf(a) - COMMON_COLOURS.indexOf(b) || a.localeCompare(b));
+}
+
+function renderPlayersPanel() {
+  const t = state.tryout;
+  const session = currentSession();
+  $("playersSub").textContent = session ? `${session.label} · ${session.date}` : "No session selected";
+  const body = $("playersRows"); body.innerHTML = "";
+  const players = [...t.players].filter((p) => p.active).sort((a, b) => a.number - b.number || a.playerNumber.localeCompare(b.playerNumber));
+  for (const p of players) {
+    const worn = colourOf(p);
+    const sel = el("select", { class: "sm", "aria-label": `Wearing, ${p.playerNumber}`, style: "min-width:110px;width:auto;min-height:40px" });
+    for (const c of knownColours()) sel.append(el("option", { value: c }, c));
+    sel.append(el("option", { value: "__other__" }, "Other…"));
+    sel.value = worn;
+    sel.addEventListener("change", async () => {
+      let colour = sel.value;
+      if (colour === "__other__") { colour = (prompt("Colour name (letters only):") || "").trim(); if (!colour) { renderPlayersPanel(); return; } }
+      if (!session) return;
+      const code = `${colour.charAt(0).toUpperCase()}-${String(p.number).padStart(2, "0")}`;
+      if (!confirm(`Change ${p.playerNumber} to ${colour} for ${session.label}? They will show as ${code} for every evaluator.`)) { renderPlayersPanel(); return; }
+      await setWorn(session, p, colour);
+    });
+    const status = isAbsent(session, p) ? "absent" : !isPlaying(session, p) ? "not dressed" : "on the ice";
+    body.append(el("tr", { "data-player": p.playerNumber, class: status === "on the ice" ? "" : "inactive" },
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", style: "margin-left:.3rem" }, p.tag) : null),
+      el("td", {}, p.position),
+      el("td", { class: "small" }, `${p.colour}${p.colour2 ? ` / ${p.colour2}` : ""}`),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(worn)}` }), sel),
+      el("td", { class: "small" }, status)));
+  }
+  if (!players.length) body.append(el("tr", {}, el("td", { colspan: 5, class: "muted" }, "No players yet.")));
+}
+
+async function setWorn(session, p, colour) {
+  try {
+    const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $playerNumber: ID!, $colour: String) {
+      setPlayerSessionColour(tryoutId: $tryoutId, sessionId: $sessionId, playerNumber: $playerNumber, colour: $colour) { id colours } }`,
+      { tryoutId: state.tryout.id, sessionId: session.id, playerNumber: p.playerNumber, colour });
+    session.colours = parseScores(data.setPlayerSessionColour.colours);
+    store.set(KEY_TRYOUT, state.tryout);
+    renderPlayersPanel(); renderChips(); renderGrid();
+  } catch (err) {
+    if (err instanceof AuthError) { location.replace("index.html"); return; }
+    alert(err instanceof NetworkError ? "No connection: jersey changes need Wi-Fi. Try again when the dot is green." : err.message);
+    renderPlayersPanel();
+  }
+}
+
+function openPlayersPanel() {
+  if (!state.tryout) return;
+  renderPlayersPanel();
+  $("playersPanel").hidden = false;
+  $("sheetBackdrop").hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function closePlayersPanel() {
+  $("playersPanel").hidden = true;
+  if ($("sheet").hidden && $("myRank").hidden) { $("sheetBackdrop").hidden = true; document.body.style.overflow = ""; }
+}
+$("playersBtn").addEventListener("click", openPlayersPanel);
+$("playersClose").addEventListener("click", closePlayersPanel);
+$("playersDone").addEventListener("click", closePlayersPanel);
 
 // ----------------------------------------------------------------------------- Session + sign out
 $("sessionSelect").addEventListener("change", async (ev) => {

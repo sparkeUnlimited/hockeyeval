@@ -186,6 +186,12 @@ a check mark and their tier letter.
 Evaluators can only ever see their own scores. They cannot see other evaluators, combined rankings or the
 convenor pages. If they re-score a player in the same session, the new scores replace the old ones.
 
+**Players.** The *Players* button lists every active player with number, position, default jerseys, what they
+are wearing in the selected session and whether they are on the ice, absent or not dressed. If a player turns up
+in a different colour, the evaluator can change *Wearing* for that session: the app asks them to confirm, because
+the change shows for every evaluator (and on your Attendance & jerseys grid). Adding, removing or renumbering
+players, and the primary colour, stay with you.
+
 **My rankings.** The *My rankings* button in the header lists every player the evaluator has scored, across all
 sessions, best first: sessions scored, their average, the tier they gave each session and their last note, with
 F / D / G filters. It is built from their own scores only, so it is safe to bring into a discussion with other

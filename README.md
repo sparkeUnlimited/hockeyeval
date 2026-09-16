@@ -252,6 +252,9 @@ only thing that grows, and log groups expire after 30 days.
   against a player.
 - `Player.tag`: a short admin label (12 chars, letters/digits only, never free text) shown as a badge to
   evaluators and in rankings; the UI exposes it as an "AA" checkbox for players still in AA contention.
+- `setPlayerSessionColour`: any enabled evaluator (or admin) can change one player's worn colour for one
+  session; a two-step pipeline checks the caller's allowlist row, then rewrites the session's colour map. The
+  evaluator screen's Players panel uses it behind a confirm.
 - `addSelfAsEvaluator`: the convenor writes their own `USER#` profile (role admin) and is added to the tryout
   allowlist like any evaluator; the admin page links to the scoring screen and back. The Lambda refuses to delete
   any login in the admin group.

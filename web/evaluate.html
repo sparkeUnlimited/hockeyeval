@@ -23,7 +23,10 @@
     <button id="syncBtn" class="sync green" type="button" aria-live="polite" title="Sync status">
       <span class="dot"></span><span id="syncText">Synced</span>
     </button>
+  </div>
+  <div class="panelbar">
     <button id="myRankBtn" class="btn sm" type="button" title="Your own scores, ranked">My rankings</button>
+    <button id="playersBtn" class="btn sm" type="button" title="All players and what they are wearing this session">Players</button>
   </div>
 </header>
 
@@ -96,6 +99,22 @@
     <p class="small muted" style="margin-top:.6rem">Avg is the weighted average of the skills you scored, averaged over the sessions you scored that player in. Tiers lists the tier you gave each session.</p>
   </div>
   <div class="sheet-foot"><div class="actions"><button id="myRankDone" class="btn primary full" type="button">Back to scoring</button></div></div>
+</section>
+
+<!-- Players: the full list, with what each is wearing in the selected session. Colour changes are shared with everyone. -->
+<section id="playersPanel" class="sheet" role="dialog" aria-modal="true" aria-labelledby="playersTitle" hidden>
+  <div class="head">
+    <div>
+      <div id="playersTitle" class="who" style="font-size:1.5rem">Players</div>
+      <div id="playersSub" class="small muted"></div>
+    </div>
+    <button id="playersClose" class="btn sm ghost" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="body" id="playersBody">
+    <p class="small muted" style="margin:.25rem 0 .5rem">Wearing = the jersey colour shown for this session. Change it if a player is in a different colour tonight: <b>every evaluator sees the change</b>, so you will be asked to confirm. Adding, removing or renumbering players is done by the convenor.</p>
+    <div class="table-wrap"><table id="playersTable"><thead><tr><th>Player</th><th>Pos</th><th>Default jerseys</th><th>Wearing</th><th>Status</th></tr></thead><tbody id="playersRows"></tbody></table></div>
+  </div>
+  <div class="sheet-foot"><div class="actions"><button id="playersDone" class="btn primary full" type="button">Back to scoring</button></div></div>
 </section>
 
 <div id="signOutModal" class="modal-backdrop" hidden>

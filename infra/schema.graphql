@@ -158,6 +158,8 @@ type Mutation {
   # Replace the teams playing in a session (with colours). Empty list = no teams, everyone plays.
   setSessionTeams(tryoutId: ID!, sessionId: ID!, teams: [SessionTeamInput!]!): Session!
     @aws_auth(cognito_groups: ["admin"])
+  # Any enabled evaluator (or admin): set what one player is wearing in one session (blank clears). Shown to everyone.
+  setPlayerSessionColour(tryoutId: ID!, sessionId: ID!, playerNumber: ID!, colour: String): Session!
   # Replace the session's per-player jersey colours ({ playerNumber: colour }). Empty object clears all overrides.
   setSessionColours(tryoutId: ID!, sessionId: ID!, colours: AWSJSON!): Session!
     @aws_auth(cognito_groups: ["admin"])

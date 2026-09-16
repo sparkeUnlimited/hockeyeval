@@ -152,6 +152,7 @@ const FIELDS = {
   updatePlayer: [await R("Mutation.updatePlayer.js")],
   setAttendance: [await R("Mutation.setAttendance.js")],
   setSessionColours: [await R("Mutation.setSessionColours.js")],
+  setPlayerSessionColour: [await R("Mutation.setPlayerSessionColour.1.load.js"), await R("Mutation.setPlayerSessionColour.2.put.js")],
   createTeam: [await R("Mutation.createTeam.js")],
   updateTeam: [await R("Mutation.updateTeam.js")],
   deleteTeam: [await R("Mutation.deleteTeam.js")],

@@ -679,6 +679,34 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
   });
 });
 
+describe("Mutation.setPlayerSessionColour (evaluators may change what a player wears)", () => {
+  test("loads session + own access row; enabled evaluator or admin only; merges the colour map", async () => {
+    const load = await loadResolver("Mutation.setPlayerSessionColour.1.load.js");
+    const put = await loadResolver("Mutation.setPlayerSessionColour.2.put.js");
+    const args = { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", colour: "green" };
+    const req = load.request(ctx({ identity: evaluatorIdentity(), args }));
+    assert.equal(req.operation, "BatchGetItem");
+    assert.deepEqual(req.tables.TryoutTable.keys.map(fromMapValues), [
+      { PK: `TRYOUT#${TRYOUT}`, SK: `SESSION#${SESSION}` }, { PK: `TRYOUT#${TRYOUT}`, SK: `EVALUATOR#${EVALUATOR_SUB}` },
+    ]);
+    const session = { SK: `SESSION#${SESSION}`, colours: { "B-07": "Red" } };
+    throwsType(() => load.response(ctx({ identity: evaluatorIdentity(), args, result: { data: { TryoutTable: [session, null] } } })), "Forbidden");
+    throwsType(() => load.response(ctx({ identity: evaluatorIdentity(), args, result: { data: { TryoutTable: [session, { SK: `EVALUATOR#${EVALUATOR_SUB}`, enabled: false }] } } })), "Forbidden");
+    const ok = ctx({ identity: evaluatorIdentity(), args, result: { data: { TryoutTable: [session, { SK: `EVALUATOR#${EVALUATOR_SUB}`, enabled: true }] } } });
+    load.response(ok);
+    assert.deepEqual(ok.stash.colours, { "B-07": "Red" });
+    const adminNoRow = ctx({ identity: adminIdentity(), args, result: { data: { TryoutTable: [session, null] } } });
+    load.response(adminNoRow);
+    const w = put.request(ok);
+    assert.equal(w.update.expression, "SET #colours = :colours");
+    assert.deepEqual(fromMapValues(w.update.expressionValues), { ":colours": { "B-07": "Red", "W-14": "Green" } });
+    const clear = ctx({ identity: evaluatorIdentity(), args: { ...args, colour: "" }, stash: { colours: { "B-07": "Red", "W-14": "Green" } } });
+    assert.deepEqual(fromMapValues(put.request(clear).update.expressionValues), { ":colours": { "B-07": "Red" } }, "blank clears the entry");
+    throwsType(() => load.request(ctx({ identity: evaluatorIdentity(), args: { ...args, colour: "R3d" } })), "BadRequest", /colour/);
+    throwsType(() => load.request(ctx({ identity: null, args })), "Unauthorized");
+  });
+});
+
 describe("Mutation.addSelfAsEvaluator", () => {
   test("writes a profile row for the caller's own sub, never for an id from args", async () => {
     const mod = await loadResolver("Mutation.addSelfAsEvaluator.js");
