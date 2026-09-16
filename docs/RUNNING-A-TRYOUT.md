@@ -74,11 +74,11 @@ CSV and paste it. The app refuses any other layout, so a roster with names canno
 ### 4. Make the teams and groups
 
 Under *Teams*, create a team: a name (`Team 1`, `Day 2 Red`, `Group A`) and, for a scrimmage team, its jersey
-colour. Leave the colour as *None (default jerseys)* for a skills group: red and white are on the ice together on
-skills nights, and each player keeps their own jersey. Then open the team's row (the chevron, or the *players · pick* pill) and tick the players on it. The
-picker shows numbers and positions only, sorted by number. A player can be on more than one team, so the day-2
-teams and the Wednesday teams can overlap however you like. On the team's row you can rename it, change its
-colour, or *Delete team*.
+colour. New teams start with *None (default jerseys)*, which is what a skills group wants: red and white are on
+the ice together on skills nights and each player keeps their own jersey. Then open the team's row (the chevron,
+or the *players · pick* pill) and tick the players on it. The picker shows numbers and positions only, sorted by
+number, with no colours. A player can be on more than one team, so the day-2 teams and the Wednesday teams can
+overlap however you like. On the team's row you can rename it, change its colour, or *Delete team*.
 
 Teams are used two ways:
 
@@ -122,7 +122,10 @@ Under *Attendance & jerseys*, pick a session. For that ice time only:
   jersey). *Reset to default jerseys* clears every colour set here for this session.
 
 Precedence, if you ever need it: a colour set here for a player wins over the team colour, which wins over the
-session's default jerseys. The section warns you if two players would show as the same code.
+session's default jerseys. To keep that from surprising you, putting a coloured team on a session clears any
+colours set here for that team's players (a skills group in default jerseys leaves them alone), and the summary
+line says when per-player colours are overriding team colours. The section also warns you if two players would
+show as the same code.
 
 ### 7. Create evaluator logins and add them to the tryout
 
@@ -169,7 +172,10 @@ number and the position. The grid is split into one group per colour, labelled w
 group away, which is handy when an evaluator is assigned to one team. Players with the AA tag carry a small AA
 badge. Absent and not-dressed players do not appear at all.
 
-Tapping a player slides up a scoring sheet:
+Tapping a player opens a full-screen scoring sheet. The player header stays pinned at the top and says how many
+skills there are ("8 skills to score, then tier and notes"); the Save buttons stay pinned at the bottom; the
+rows scroll in between, with an amber "scroll down, there is more" marker until the evaluator reaches the
+"end of sheet" line. On the sheet:
 
 - the code as worn tonight, big, with the team and the player's usual code underneath when they differ;
 - one row per criterion for that position, with five big buttons `1 2 3 4 5` (tap the criterion name, or press and
@@ -245,7 +251,9 @@ their number. It just gives you fewer data points: read Sessions and Evals toget
 overall at 2/5 and 5/5 sessions are not equally well known.
 
 Filter by **Session** (one skate or all combined) and **Position**, or tick **AA only**. Click any column heading
-to sort. Two more toggles:
+to sort. Criterion columns use short headings (Puck, Sense, Compete, Coach, Defence, Offence, Crease, Saves,
+Rebounds, Aware, G Compete); hover for the full name. Tables that are still wider than the window scroll
+sideways, with the scrollbar always showing. Two more toggles:
 
 - **Equal weights** scores every criterion the same instead of using the rubric weights. Handy as a sanity check.
 - **Normalise evaluators** adjusts for a consistently harsh or generous evaluator by re-centring each evaluator's
@@ -329,9 +337,13 @@ logins cannot create stray evaluations. Old tryouts stay in storage but are no l
 - **An evaluator cannot see a player**: the player is absent or not dressed for that session. Check *Attendance
   & jerseys* for the session, and the team or group on the session row. Reloading the evaluator screen picks up
   the change.
-- **The grid shows the wrong colours for a session**: for a scrimmage, check the team colours on the session row;
-  for a skills night, the bulk row or the per-player dropdowns in *Attendance & jerseys*. Nothing about the scores
-  changes when colours do.
+- **Only some of the players are listed for a session** (13 of 24, say): the wrong team or group is on that
+  session row. Remove it with its ✕ and add the right one; everyone in it appears immediately.
+- **A Red team is showing partly White**: per-player colours left over from an earlier bulk step are overriding
+  the team colour. Open *Attendance & jerseys* for that session and press *Reset to default jerseys*, or re-add
+  the team to the session, which clears them. Nothing about the scores changes when colours do.
+- **The grid shows the wrong colours for a skills night**: check the bulk row or the per-player dropdowns in
+  *Attendance & jerseys*, and that the skills group's colour is *default jerseys*.
 - **An ice time moved**: change the date on the session row. Evaluators see it in their picker on reload.
 - **A player has the wrong position or primary colour**: change it on their row in the Players table (the colour
   only before they have scores). Wrong number: *Delete* the player if nobody has scored them yet, otherwise
