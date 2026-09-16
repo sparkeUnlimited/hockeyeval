@@ -369,6 +369,22 @@ try {
   await ev.locator("#syncText", { hasText: "Synced" }).waitFor({ timeout: 45000 });
   log("back online: outbox flushed, dot green");
 
+  // My rankings: the evaluator's own 9 scored players, best first, own scores only
+  await ev.click("#myRankBtn");
+  await ev.locator("#myRank").waitFor({ state: "visible" });
+  await ev.locator("#myRankRows tr").first().waitFor({ timeout: 20000 });
+  const myCount = await ev.locator("#myRankRows tr").count();
+  assert(myCount === 9, `my rankings list the 9 players I scored, saw ${myCount}`);
+  const firstAvg = Number(await ev.locator("#myRankRows tr").first().locator("td").nth(4).textContent());
+  const lastAvg = Number(await ev.locator("#myRankRows tr").last().locator("td").nth(4).textContent());
+  assert(firstAvg >= lastAvg, "sorted best first");
+  assert(/9 players scored · 9 evaluations/.test(await ev.locator("#myRankSummary").textContent()), `summary: ${await ev.locator("#myRankSummary").textContent()}`);
+  await ev.click('[data-mypos="D"]');
+  assert((await ev.locator("#myRankRows tr").count()) < 9, "position filter narrows the list");
+  await ev.click("#myRankDone");
+  await ev.locator("#myRank").waitFor({ state: "hidden" });
+  log("evaluator's own rankings shown and filtered");
+
   // ------------------------------------------------------------------ Admin scores as an evaluator too
   await admin.click('.tab[data-tab="evaluators"]');
   await admin.fill("#meLabel", "Convenor");

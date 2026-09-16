@@ -186,6 +186,12 @@ a check mark and their tier letter.
 Evaluators can only ever see their own scores. They cannot see other evaluators, combined rankings or the
 convenor pages. If they re-score a player in the same session, the new scores replace the old ones.
 
+**My rankings.** The *My rankings* button in the header lists every player the evaluator has scored, across all
+sessions, best first: sessions scored, their average, the tier they gave each session and their last note, with
+F / D / G filters. It is built from their own scores only, so it is safe to bring into a discussion with other
+evaluators or the coaches without anyone seeing anyone else's numbers. It works offline from what is saved on the
+phone.
+
 ### Stopping an evaluator
 
 If an evaluator drops out, or you want to be sure nobody adds scores after the last skate, click **Disable**

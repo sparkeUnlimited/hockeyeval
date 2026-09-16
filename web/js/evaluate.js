@@ -5,7 +5,7 @@ import {
   registerServiceWorker, NetworkError, AuthError, Q_CURRENT_TRYOUT, Q_MY_EVALS, normalizeTryout, parseScores, swatchColour,
   wornColour, wornCode, isAbsent, isPlaying, teamNameOf,
 } from "./api.js";
-import { SCALE, TIERS, criteriaFor, NOTES_MAX } from "./criteria.js";
+import { SCALE, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
 registerServiceWorker();
 const me = await requireAuth();
@@ -378,7 +378,7 @@ $("saveNext").addEventListener("click", () => {
 });
 $("saveClose").addEventListener("click", closeSheet);
 $("sheetClose").addEventListener("click", closeSheet);
-$("sheetBackdrop").addEventListener("click", closeSheet);
+$("sheetBackdrop").addEventListener("click", () => { if (!$("myRank").hidden) closeMyRankings(); else closeSheet(); });
 $("clearBtn").addEventListener("click", () => {
   if (!state.current || isReadOnly()) return;
   if (!confirm(`Clear all scores, tier and notes for ${state.current} in this session?`)) return;
@@ -431,6 +431,100 @@ $("syncBtn").addEventListener("click", async () => {
   flush();
 });
 onSynced(() => { /* status listener already updates the dot */ });
+
+// ----------------------------------------------------------------------------- My rankings (own scores only)
+let myPos = "all";
+
+/** This evaluator's evaluations for every session: server rows merged with what is saved on this phone. */
+async function loadAllMyEvaluations() {
+  const t = state.tryout;
+  const bySession = new Map();
+  for (const s of t.sessions) {
+    const local = store.get(`evals:${t.id}:${s.id}:${me.sub}`, {});
+    const merged = { ...local };
+    try {
+      const data = await gql(Q_MY_EVALS, { tryoutId: t.id, sessionId: s.id });
+      for (const e of data.myEvaluations) {
+        const server = { scores: parseScores(e.scores), tier: e.tier || null, notes: e.notes || "", updatedAt: e.updatedAt };
+        const mine = merged[e.playerNumber];
+        if (!mine || !mine.updatedAt || mine.updatedAt < server.updatedAt) merged[e.playerNumber] = server;
+      }
+    } catch (err) {
+      if (err instanceof AuthError) { location.replace("index.html"); return bySession; }
+      if (!(err instanceof NetworkError)) throw err; // offline: local copy only
+    }
+    bySession.set(s.id, merged);
+  }
+  return bySession;
+}
+
+function myRankingRows(bySession) {
+  const t = state.tryout;
+  const rows = new Map();
+  for (const s of t.sessions) {
+    const evals = bySession.get(s.id) || {};
+    for (const [pn, e] of Object.entries(evals)) {
+      if (!hasContent(e)) continue;
+      const p = t.players.find((x) => x.playerNumber === pn);
+      if (!p) continue;
+      const overall = weightedScore(p.position, e.scores || {});
+      if (!rows.has(pn)) rows.set(pn, { player: p, overalls: [], tiers: [], notes: [], sessions: 0 });
+      const r = rows.get(pn);
+      r.sessions += 1;
+      if (overall !== null) r.overalls.push(overall);
+      if (e.tier) r.tiers.push(e.tier);
+      if (e.notes && e.notes.trim()) r.notes.push(e.notes.trim());
+    }
+  }
+  return [...rows.values()].map((r) => ({
+    ...r,
+    avg: r.overalls.length ? r.overalls.reduce((a, b) => a + b, 0) / r.overalls.length : null,
+  })).sort((a, b) => {
+    if (a.avg === null && b.avg === null) return a.player.playerNumber.localeCompare(b.player.playerNumber);
+    if (a.avg === null) return 1; if (b.avg === null) return -1;
+    return b.avg - a.avg || a.player.playerNumber.localeCompare(b.player.playerNumber);
+  });
+}
+
+let myRows = [];
+function renderMyRankings() {
+  const body = $("myRankRows"); body.innerHTML = "";
+  const list = myRows.filter((r) => myPos === "all" || r.player.position === myPos);
+  list.forEach((r, i) => {
+    body.append(el("tr", {},
+      el("td", { class: "num" }, String(i + 1)),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(r.player.colour)}` }), el("b", {}, r.player.playerNumber), r.player.tag ? el("span", { class: "tagpill", style: "margin-left:.3rem" }, r.player.tag) : null),
+      el("td", {}, r.player.position),
+      el("td", { class: "num" }, String(r.sessions)),
+      el("td", { class: "num" }, r.avg === null ? "–" : r.avg.toFixed(2)),
+      el("td", {}, r.tiers.join(" ") || "–"),
+      el("td", { class: "small", style: "white-space:normal;min-width:160px" }, r.notes.length ? r.notes[r.notes.length - 1] : ""),
+    ));
+  });
+  if (!list.length) body.append(el("tr", {}, el("td", { colspan: 7, class: "muted" }, "You haven't scored anyone yet.")));
+  const scoredPlayers = myRows.length;
+  const evalCount = myRows.reduce((a, r) => a + r.sessions, 0);
+  $("myRankSummary").textContent = `${scoredPlayers} player${scoredPlayers === 1 ? "" : "s"} scored · ${evalCount} evaluation${evalCount === 1 ? "" : "s"} across ${state.tryout.sessions.length} session${state.tryout.sessions.length === 1 ? "" : "s"}${lastStatus && !lastStatus.online ? " · offline: showing what is saved on this phone" : ""}`;
+  for (const c of document.querySelectorAll("[data-mypos]")) c.setAttribute("aria-pressed", String(c.dataset.mypos === myPos));
+}
+
+async function openMyRankings() {
+  if (!state.tryout) return;
+  $("myRankSummary").textContent = "Loading your scores…";
+  $("myRank").hidden = false;
+  $("sheetBackdrop").hidden = false;
+  document.body.style.overflow = "hidden";
+  myRows = myRankingRows(await loadAllMyEvaluations());
+  renderMyRankings();
+}
+function closeMyRankings() {
+  $("myRank").hidden = true;
+  if ($("sheet").hidden) { $("sheetBackdrop").hidden = true; document.body.style.overflow = ""; }
+}
+$("myRankBtn").addEventListener("click", openMyRankings);
+$("myRankClose").addEventListener("click", closeMyRankings);
+$("myRankDone").addEventListener("click", closeMyRankings);
+for (const c of document.querySelectorAll("[data-mypos]")) c.addEventListener("click", () => { myPos = c.dataset.mypos; renderMyRankings(); });
 
 // ----------------------------------------------------------------------------- Session + sign out
 $("sessionSelect").addEventListener("change", async (ev) => {
