@@ -173,8 +173,9 @@ textarea { min-height: 88px; resize: vertical; }
 /* iPad landscape: two-column sheet */
 @media (min-width: 900px) {
   .sheet { left: 50%; transform: translateX(-50%); width: 900px; height: auto; max-height: 96dvh; border-radius: 20px 20px 0 0; }
-  .sheet .body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 2rem; }
-  .sheet .body > .side { padding-top: .35rem; }
+  /* Two columns only on the scoring sheet (skills left, tier/notes right); the Players and My rankings panels stay single-column. */
+  #sheet .body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 2rem; }
+  #sheet .body > .side { padding-top: .35rem; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 }
 
