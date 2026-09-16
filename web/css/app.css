@@ -202,6 +202,14 @@ th.sortable { text-decoration: underline dotted var(--muted); text-underline-off
 th.sorted-asc::after { content: " ↑"; color: var(--fg); } th.sorted-desc::after { content: " ↓"; color: var(--fg); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr.disagree td { background: color-mix(in srgb, var(--warn) 22%, transparent); }
+tr.release td { background: color-mix(in srgb, var(--bad) 18%, transparent); }
+tr.release.disagree td { background: color-mix(in srgb, var(--bad) 30%, transparent); }
+tr.cut-line td { border-top: 4px solid var(--bad); }
+tr.insufficient td { opacity: .55; }
+tr.group-row td { background: var(--surface-2); font-weight: 700; }
+.pill.release { border-color: var(--bad); color: var(--bad); }
+.pill.keep { border-color: var(--ok); color: var(--ok); }
+.pill.bubble { border-color: var(--warn); color: var(--warn); }
 tr.inactive td { opacity: .5; }
 .pill { display: inline-block; padding: .1rem .5rem; border-radius: 999px; border: 1px solid var(--border); font-size: .85rem; font-weight: 700; }
 .pill.ok { border-color: var(--ok); color: var(--ok); } .pill.bad { border-color: var(--bad); color: var(--bad); }

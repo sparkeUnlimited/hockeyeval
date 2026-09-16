@@ -159,7 +159,17 @@
       <label><input id="rTagged" type="checkbox"> AA only</label>
       <span id="rSummary" class="muted small"></span>
     </div>
-    <p class="small muted">Overall = weighted average of the criteria that were scored, averaged across evaluations. Spread = standard deviation of each evaluator's overall for that player; rows at or above <span id="spreadThreshold"></span> are highlighted as disagreement worth a second look. Tap a column heading to sort.</p>
+    <div class="toolbar" id="cutBar" style="border:2px solid var(--border);border-radius:var(--radius);padding:.5rem .75rem">
+      <b>Cut line</b>
+      <label>Release <input id="cutF" type="number" min="0" max="99" value="8" style="width:4.5em;min-height:40px"> F</label>
+      <label><input id="cutD" type="number" min="0" max="99" value="3" style="width:4.5em;min-height:40px"> D</label>
+      <label><input id="cutG" type="number" min="0" max="99" value="0" style="width:4.5em;min-height:40px"> G</label>
+      <label title="Players below these minimums are listed under 'Not enough information' and are not counted">Min <input id="cutMinEvals" type="number" min="0" max="99" value="2" style="width:4.5em;min-height:40px"> evaluations</label>
+      <label><input id="cutMinSessions" type="number" min="0" max="99" value="3" style="width:4.5em;min-height:40px"> sessions</label>
+      <label title="AA-tagged players are a separate decision"><input id="cutExcludeAA" type="checkbox" checked> Exclude AA</label>
+      <span id="cutSummary" class="small"></span>
+    </div>
+    <p class="small muted">Overall = weighted average of the criteria that were scored, averaged across evaluations. Spread = standard deviation of each evaluator's overall for that player; rows at or above <span id="spreadThreshold"></span> are highlighted as disagreement worth a second look. Tap a column heading to sort. <b>Cut line</b>: within each position, the players with the lowest Overall who meet the minimums are shaded red as the release zone (the count you set); <b>bubble</b> marks anyone within 0.15 of the line on either side, and tied players at the line are all bubble. Players below the minimums, and AA players when excluded, sit in a grey group at the bottom and are not counted.</p>
     <div class="table-wrap" style="max-height:75vh"><table id="rankTable"><thead id="rankHead"></thead><tbody id="rankBody"></tbody></table></div>
   </section>
 

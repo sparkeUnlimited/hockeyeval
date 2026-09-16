@@ -28,6 +28,7 @@ const state = {
   evaluators: [],
   openTeam: null,
   rank: { sessionId: "all", position: "all", equalWeights: false, normalize: false, taggedOnly: false, sortKey: "overall", sortDir: "desc" },
+  cut: { F: 8, D: 3, G: 0, minEvals: 2, minSessions: 3, excludeAA: true },
   attendSessionId: null,
   view: { evaluatorId: null, sessionId: "all" },
   showInactive: false,
@@ -804,11 +805,56 @@ async function deleteEvaluator(e) {
 }
 
 // ----------------------------------------------------------------------------- Rankings
+const BUBBLE_MARGIN = 0.15;
+
+/**
+ * Cut line per position. Eligible = meets the minimums (and not AA when excluded) with an Overall.
+ * The lowest `cut[pos]` eligible players are "release"; others "keep". Anyone within BUBBLE_MARGIN of the
+ * line, and every player tied at the line, is "bubble". Sets r.cut, r.bubble, r.eligible on each row.
+ */
+function applyCut(rows) {
+  const c = state.cut;
+  const summary = { line: {}, release: 0, bubble: 0, insufficient: 0 };
+  for (const r of rows) {
+    r.eligible = r.overall !== null && r.n >= c.minEvals && r.attended >= c.minSessions && !(c.excludeAA && r.tag);
+    r.cut = r.eligible ? "keep" : "insufficient";
+    r.bubble = false;
+    if (!r.eligible) summary.insufficient += 1;
+  }
+  for (const pos of ["F", "D", "G"]) {
+    const n = Number(c[pos]) || 0;
+    const list = rows.filter((r) => r.eligible && r.position === pos).sort((a, b) => a.overall - b.overall); // lowest first
+    if (!n || !list.length) continue;
+    let count = Math.min(n, list.length);
+    let tiedAtLine = 0;
+    // A tie that straddles the line is never split by the app: those players stay "keep" and are all bubble.
+    if (list[count] && list[count].overall === list[count - 1].overall) {
+      const tieValue = list[count - 1].overall;
+      count = list.filter((r) => r.overall < tieValue).length;
+      tiedAtLine = list.filter((r) => r.overall === tieValue).length;
+    }
+    const releaseMax = count ? list[count - 1].overall : null;
+    const keepMin = list[count] ? list[count].overall : null;
+    const line = releaseMax === null ? keepMin : keepMin === null ? releaseMax : (releaseMax + keepMin) / 2;
+    summary.line[pos] = line;
+    if (tiedAtLine) summary.tied = (summary.tied || 0) + tiedAtLine;
+    list.forEach((r, i) => {
+      r.cut = i < count ? "release" : "keep";
+      const tied = tiedAtLine > 0 && r.overall === keepMin;
+      r.bubble = tied || Math.abs(r.overall - line) <= BUBBLE_MARGIN;
+      if (r.cut === "release") summary.release += 1;
+      if (r.bubble) summary.bubble += 1;
+    });
+  }
+  return summary;
+}
+
 function rankColumns(position) {
   const crits = position === "all" ? CRITERIA : criteriaFor(position);
   // Overall, spread and tier votes first so they are visible without horizontal scrolling; criteria after.
   return [
     { key: "playerNumber", label: "Player", num: false },
+    { key: "cut", label: "Cut", num: false },
     { key: "position", label: "Pos", num: false },
     { key: "attended", label: "Sessions", num: true },
     { key: "n", label: "Evals", num: true },
@@ -845,12 +891,30 @@ function renderRankings() {
     tr.append(th);
   }
   head.append(tr);
-  const sorted = sortRows(rows, state.rank.sortKey, state.rank.sortDir);
+  const cutSummary = applyCut(rows);
+  const sortedAll = sortRows(rows, state.rank.sortKey, state.rank.sortDir);
+  // Eligible players first (in the chosen order), then the not-enough-information group.
+  const sorted = [...sortedAll.filter((r) => r.eligible), ...sortedAll.filter((r) => !r.eligible)];
+  let lineDrawn = false;
+  let groupHeaderDone = false;
   for (const r of sorted) {
-    const row = el("tr", { class: r.spread !== null && r.spread >= SPREAD_THRESHOLD ? "disagree" : "" });
+    if (!r.eligible && !groupHeaderDone) {
+      groupHeaderDone = true;
+      body.append(el("tr", { class: "group-row" }, el("td", { colspan: cols.length }, `Not enough information (${cutSummary.insufficient}): fewer than ${state.cut.minEvals} evaluations or ${state.cut.minSessions} sessions${state.cut.excludeAA ? ", or AA" : ""}. Not counted in the cut.`)));
+    }
+    const cls = [r.spread !== null && r.spread >= SPREAD_THRESHOLD ? "disagree" : "", r.cut === "release" ? "release" : "", r.eligible ? "" : "insufficient"];
+    // Heavy line above the first release row when the table is sorted by Overall (high to low) for one position.
+    if (!lineDrawn && r.cut === "release" && state.rank.position !== "all" && state.rank.sortKey === "overall" && state.rank.sortDir === "desc") { cls.push("cut-line"); lineDrawn = true; }
+    const row = el("tr", { class: cls.filter(Boolean).join(" ") });
     for (const c of cols) {
       let v = getPath(r, c.key);
       let text;
+      if (c.key === "cut") {
+        const cell = el("td", {});
+        if (r.eligible) cell.append(el("span", { class: `pill ${r.cut}` }, r.cut));
+        if (r.bubble) cell.append(el("span", { class: "pill bubble", style: "margin-left:.3rem" }, "bubble"));
+        row.append(cell); continue;
+      }
       if (c.key === "playerNumber") { row.append(el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(r.colour)}` }), el("b", {}, r.playerNumber), r.tag ? el("span", { class: "tagpill", style: "margin-left:.4rem" }, r.tag) : null)); continue; }
       if (c.key === "attended") { row.append(el("td", { class: "num" }, `${r.attended}/${r.sessionsTotal}`)); continue; }
       if (c.crit) text = criteriaFor(r.position).some((x) => x.key === c.crit) ? fmt(v) : "–";
@@ -863,6 +927,21 @@ function renderRankings() {
   if (!sorted.length) body.append(el("tr", {}, el("td", { colspan: cols.length, class: "muted" }, "No active players.")));
   const evaluated = rows.filter((r) => r.n > 0).length;
   $("rSummary").textContent = `${rows.length} players · ${evaluated} with evaluations · ${state.evals.length} evaluations total · group mean ${fmt(stats.group.mean)}`;
+  const lines = Object.entries(cutSummary.line).map(([pos, v]) => `${pos} ${fmt(v)}`).join(" · ");
+  $("cutSummary").textContent = `${cutSummary.release} in the release zone${lines ? ` · line at ${lines}` : ""} · ${cutSummary.bubble} bubble${cutSummary.tied ? ` (${cutSummary.tied} tied at the line, not released: decide these)` : ""} · ${cutSummary.insufficient} not enough information`;
+}
+
+// Cut controls (remembered on this browser)
+const CUT_KEY = "ui:cut";
+try { Object.assign(state.cut, JSON.parse(localStorage.getItem(CUT_KEY) || "{}")); } catch { /* ignore */ }
+for (const [id, key, kind] of [["cutF", "F", "n"], ["cutD", "D", "n"], ["cutG", "G", "n"], ["cutMinEvals", "minEvals", "n"], ["cutMinSessions", "minSessions", "n"], ["cutExcludeAA", "excludeAA", "b"]]) {
+  const inp = $(id);
+  if (kind === "b") inp.checked = !!state.cut[key]; else inp.value = String(state.cut[key]);
+  inp.addEventListener(kind === "b" ? "change" : "input", () => {
+    state.cut[key] = kind === "b" ? inp.checked : Math.max(0, Number(inp.value) || 0);
+    try { localStorage.setItem(CUT_KEY, JSON.stringify(state.cut)); } catch { /* ignore */ }
+    renderRankings();
+  });
 }
 
 for (const [id, key] of [["rSession", "sessionId"], ["rPosition", "position"]]) {
@@ -939,14 +1018,16 @@ const today = () => new Date().toISOString().slice(0, 10);
 function rankingsCsv() {
   const { rows } = computeRankings();
   const crits = state.rank.position === "all" ? CRITERIA : criteriaFor(state.rank.position);
-  const header = ["player_number", "colour", "number", "position", "tag", "sessions_attended", "sessions_total", "evaluations", "evaluators",
+  applyCut(rows);
+  const header = ["player_number", "cut", "colour", "number", "position", "tag", "sessions_attended", "sessions_total", "evaluations", "evaluators",
     ...crits.map((c) => `avg_${c.key}`), "overall", "tier_A", "tier_B", "tier_C", "tier_X", "spread"];
   const sorted = sortRows(rows, state.rank.sortKey, state.rank.sortDir);
-  const data = sorted.map((r) => [r.playerNumber, r.colour, r.number, r.position, r.tag || "", r.attended, r.sessionsTotal, r.n, r.evaluators,
+  const data = sorted.map((r) => [r.playerNumber, r.eligible ? `${r.cut}${r.bubble ? " bubble" : ""}` : "insufficient", r.colour, r.number, r.position, r.tag || "", r.attended, r.sessionsTotal, r.n, r.evaluators,
     ...crits.map((c) => (r.crit[c.key] === null || r.crit[c.key] === undefined ? "" : fmt(r.crit[c.key], 3))),
     fmt(r.overall, 3), r.tiers.A, r.tiers.B, r.tiers.C, r.tiers.X, fmt(r.spread, 3)]);
   const meta = [`# ${state.tryout.name}`, `session=${state.rank.sessionId}`, `position=${state.rank.position}`,
-    `weights=${state.rank.equalWeights ? "equal" : "rubric"}`, `normalised=${state.rank.normalize}`, `exported=${today()}`];
+    `weights=${state.rank.equalWeights ? "equal" : "rubric"}`, `normalised=${state.rank.normalize}`,
+    `cut=F${state.cut.F}/D${state.cut.D}/G${state.cut.G}`, `min_evaluations=${state.cut.minEvals}`, `min_sessions=${state.cut.minSessions}`, `exclude_aa=${state.cut.excludeAA}`, `exported=${today()}`];
   return { name: `rankings-${slug(state.tryout.name)}-${today()}.csv`, text: csv([meta, header, ...data]) };
 }
 

@@ -239,6 +239,26 @@ to sort. Two more toggles:
 - **Normalise evaluators** adjusts for a consistently harsh or generous evaluator by re-centring each evaluator's
   scores on the group average before combining them. It only kicks in for evaluators with at least three scores.
 
+### The cut line
+
+When it is time to release players, use the **Cut line** row above the table. Enter how many to release per
+position (for example 8 F, 3 D, 0 G) and the minimum a player needs to be counted: by default **2 evaluations and
+3 sessions**. Then:
+
+- Players who meet the minimums are ranked by Overall within their position, and the lowest ones, as many as you
+  entered, are shaded red as the **release zone**. With the Position filter set to one position and the table
+  sorted by Overall, a heavy red line is drawn above the zone.
+- **bubble** marks anyone within 0.15 of the line on either side. If several players are tied exactly at the
+  line, the app never splits them: none of the tied players is released, they are all marked bubble, and the
+  summary line says so. Those are the players to decide with the coaches, or to watch at the last skate.
+- Players below the minimums, and AA-tagged players while *Exclude AA* is ticked, sit in a grey **Not enough
+  information** group at the bottom and are not counted. AA players are a separate decision anyway.
+- The cut uses whatever the table shows, so the weights and normalise toggles apply, and the rankings CSV gets a
+  `cut` column (keep, release, bubble, insufficient) with the settings recorded on its first line.
+
+The release zone is only as good as the ice time behind it: keep an eye on the Sessions and Evals columns next
+to the shading.
+
 ### Highlighted rows
 
 A highlighted spread means the evaluators saw different players or different things. That is information, not a

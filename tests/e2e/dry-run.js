@@ -407,16 +407,33 @@ try {
   await admin.selectOption("#rSession", { index: 1 });
   const rows = admin.locator("#rankBody tr");
   await rows.first().waitFor();
-  const evaluated = await rows.evaluateAll((trs) => trs.filter((tr) => Number(tr.children[3].textContent) >= 1).length);
+  const evaluated = await rows.evaluateAll((trs) => trs.filter((tr) => !tr.classList.contains("group-row") && Number(tr.children[4].textContent) >= 1).length);
   assert(evaluated === 9, `expected 9 evaluated players in rankings, saw ${evaluated}`);
-  const total = await rows.count();
+  const total = await admin.locator("#rankBody tr:not(.group-row)").count();
   assert(total === 12, `expected 12 rows, saw ${total}`);
   const w12 = admin.locator('#rankBody tr', { hasText: "W-12" });
-  assert((await w12.locator("td").nth(2).textContent()) === "1/2", "W-12 attended 1 of 2 sessions (absent in 1, on Team 2 in 2)");
+  assert((await w12.locator("td").nth(3).textContent()) === "1/2", "W-12 attended 1 of 2 sessions (absent in 1, on Team 2 in 2)");
   const b17 = admin.locator('#rankBody tr', { hasText: "B-17" });
-  assert((await b17.locator("td").nth(2).textContent()) === "1/2", "B-17 played 1 of 2 (not dressed for the scrimmage)");
+  assert((await b17.locator("td").nth(3).textContent()) === "1/2", "B-17 played 1 of 2 (not dressed for the scrimmage)");
+
+  // Cut line: with the defaults (2 evals, 3 sessions) nobody qualifies in this short run; loosen to 1/1 and release 2 F
+  assert(/12 not enough information/.test(await admin.locator("#cutSummary").textContent()), `defaults exclude everyone in a 2-session run: ${await admin.locator("#cutSummary").textContent()}`);
+  await admin.fill("#cutMinEvals", "1"); await admin.fill("#cutMinSessions", "1"); await admin.fill("#cutF", "2"); await admin.fill("#cutD", "0");
+  await admin.selectOption("#rPosition", "F");
+  // Four forwards tie at 4.00 and one sits at 3.00: releasing 2 would split the tie, so only the 3.00 is released and the tie is bubble
+  const releaseRows = admin.locator("#rankBody tr.release");
+  assert((await releaseRows.count()) === 1, `1 forward in the release zone (tie not split), saw ${await releaseRows.count()}`);
+  assert(/W-07/.test(await releaseRows.first().textContent()), "the 3.00 forward is the one released");
+  assert((await admin.locator("#rankBody tr.cut-line").count()) === 1, "a line is drawn above the release zone when sorted by Overall for one position");
+  assert(/1 in the release zone/.test(await admin.locator("#cutSummary").textContent()) && /4 tied at the line/.test(await admin.locator("#cutSummary").textContent()), `summary explains the tie: ${await admin.locator("#cutSummary").textContent()}`);
+  assert((await admin.locator("#rankBody tr .pill.bubble").count()) === 4, "the four tied forwards are bubble");
+  assert((await admin.locator("#rankBody tr.group-row").count()) === 1, "unscored forwards are grouped as not enough information");
+  await admin.screenshot({ path: path.join(DOCS, "screenshot-admin-cut-line.png") });
+  await admin.selectOption("#rPosition", "all");
+  await admin.fill("#cutMinEvals", "2"); await admin.fill("#cutMinSessions", "3"); await admin.fill("#cutF", "8"); await admin.fill("#cutD", "3");
   await admin.check("#rTagged");
-  assert((await rows.count()) === 1 && /W-09/.test(await rows.first().textContent()), "AA-only filter shows just W-09");
+  const aaRows = admin.locator("#rankBody tr:not(.group-row)");
+  assert((await aaRows.count()) === 1 && /W-09/.test(await aaRows.first().textContent()), "AA-only filter shows just W-09");
   await admin.uncheck("#rTagged");
   await admin.screenshot({ path: path.join(DOCS, "screenshot-admin-rankings.png") });
   log("admin rankings show 9 evaluated players");
