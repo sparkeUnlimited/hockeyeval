@@ -37,19 +37,37 @@ session has expired (the outbox survives sign-out and re-sign-in on the same dev
 have one (CLI-created admins, scripts, the dry run). `web/js/auth.js` talks to the Cognito JSON API with plain
 `fetch`; no SDK is shipped to the browser. Sessions last 30 days and refresh silently.
 
-**Per-tryout allowlist.** A login can only score a tryout it has been added to. The Setup tab lists every
+**Per-tryout allowlist.** A login can only score a tryout it has been added to. The Evaluators tab lists every
 evaluator with an *Add to tryout* / *Disable* / *Enable* toggle; logins created there are added automatically,
 and a new tryout starts with nobody added. The write resolver fetches the caller's access row in the same
 `BatchGetItem` as the tryout, session and player, and rejects with `Forbidden` when it is missing or disabled.
 Queued offline scores from a disabled evaluator are rejected on sync and shown as such on their phone.
 
-**Two jersey colours.** Every player gets a primary and a secondary jersey colour at registration; the number is
-the same on both. A player's identity for the whole tryout is the primary code (`W-14`). Each session is marked
-`primary` or `secondary` (skills sessions default to primary, scrimmages to secondary), and the evaluator grid
-shows the colour worn in that session with the same number (`W-14` appears as `G-14` when Green is the second
-jersey). Scores always attach to the primary code; the raw CSV records what the player was wearing (`worn_as`).
-The Setup tab flags any session where two players would show the same code. Colour fields are free text with
-type-ahead of colours already in use.
+**Players, teams and what they wear.** A player's identity for the whole tryout is their primary colour letter
+plus number (`W-433`); the number never changes. What they wear on a given night is resolved per session, in
+one place (`wornColour` in `web/js/api.js`), with this precedence: a per-player colour set for that session
+(*Attendance & jerseys*, or an evaluator's Players panel), then the colour of the team they are on for that
+session, then the session's default jersey set (primary or secondary). **Teams** are named rosters with an
+optional colour; a scrimmage or game takes exactly two, a skills session takes one *group* (usually with no
+colour, so players stay in their default jerseys). Players not on a team or group that is on the ice are *not
+dressed*: hidden from evaluators, unscoreable (the write pipeline reads rosters live), and not counted as a
+session attended. Evaluators see the worn colour with the same number (`W-433` on a Red team shows as `R-433`);
+scores always attach to the primary code and the raw CSV records `worn_as`. The admin flags any session where
+two players would show the same code, and putting a coloured team on a session clears leftover per-player
+colours for its players so the team colour actually wins.
+
+**Convenor dashboard.** Setup (folding cards: Tryout, Players, Teams, Sessions, Attendance & jerseys), Rankings
+(sortable, per-session or combined, equal-weights and z-score toggles, AA-only filter, a **cut line** with release
+counts per position and minimum evaluations/sessions, tie-safe, with a *Not enough information* group),
+Evaluators (logins, allowlist toggles, *Score players yourself* so the convenor can evaluate with their own login,
+and every evaluator's scores and tendencies), Export and Close tryout. The Players table edits position, primary
+colour (only before scores; the row is moved atomically and references carried over), secondary colour and the AA
+tag in place, and deletes players that have no scores.
+
+**Evaluator screen.** Grid grouped by worn colour (labelled with the team in a scrimmage), each group foldable;
+full-screen scoring sheet with the header and Save buttons pinned and a "scroll down, there is more" marker; *My
+rankings* (their own scores only, across sessions); *Players* (the full list with what each is wearing, editable
+behind a confirm since it shows for everyone). Absent and not-dressed players do not appear.
 
 **Rubric.** `web/js/criteria.js` is the single source of truth for criteria, weights, anchors and tiers. The
 evaluator form, the admin rankings, the CSV headers, the resolvers (which strip unknown keys) and the tests all
@@ -143,11 +161,12 @@ association, point the pool at Amazon SES.
 
 ### 3. Set up the tryout
 
-Sign in at the CloudFront URL with the admin account. On **Setup**: create the tryout, add sessions, add
-players (paste `colour,number,position,colour2` lines, the fourth column being the secondary jersey colour, or
-add one at a time) and create evaluator logins. New logins
-are added to the current tryout automatically; logins created from the CLI show as *not added* until you click
-*Add to tryout*. Or load players from the command line (needs an admin with a password):
+Sign in at the CloudFront URL with the admin account. On **Setup**: create the tryout, add players (paste
+`colour,number,position,colour2` lines, the fourth column being the secondary jersey colour, or add one at a
+time), make teams and groups, add sessions and put teams on them, and set attendance and jerseys per session. On
+**Evaluators**: create evaluator logins (added to the current tryout automatically; logins created from the CLI
+show as *not added* until you click *Add to tryout*) and, if you want to score too, *Add me as an evaluator*.
+Or load players from the command line (needs an admin with a password):
 
 ```bash
 TRYOUT_ADMIN_EMAIL=convenor@example.com TRYOUT_ADMIN_PASSWORD='...' node scripts/seed-players.js docs/players.example.csv
@@ -185,9 +204,14 @@ E2E_URL=https://xxxx.cloudfront.net E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... \
 E2E_EVALUATOR_EMAIL=... E2E_EVALUATOR_PASSWORD=... E2E_EVALUATOR_LABEL='Evaluator 1' node tests/e2e/dry-run.js
 ```
 
-The dry run: admin creates a tryout with 2 sessions and 12 players; an evaluator not yet on the list sees a
-read-only screen; the admin adds them; the evaluator scores 6 players, goes offline, scores 3 more, comes back
-online; the admin rankings show all 9. It saves screenshots into `docs/`.
+The dry run (65 unit tests run separately) walks the whole flow: admin creates a tryout with 2 sessions and 12
+players, edits positions and colours, tags a player AA, marks one absent, sets skills-night jerseys by position,
+builds two teams and puts them on the scrimmage (plus a group on the skills session), moves a session date,
+changes a player's primary colour before any scores; an evaluator not yet on the list sees a read-only screen,
+is added, scores 6 players, goes offline, scores 3 more, comes back online, folds a colour group, checks *My
+rankings*, changes a player's jersey from the *Players* panel; the convenor adds themselves as an evaluator and
+scores; the rankings show all 9 with the Sessions column, AA-only filter and the cut line (including the tie
+rule); deleting or recolouring a scored player is refused. It saves screenshots into `docs/`.
 
 Resolvers were also checked against the real APPSYNC_JS runtime with `aws appsync evaluate-code` (no regex
 literals, no classic `for`, no `++`, no comparator sorts, no `continue`). If you edit a resolver, run
@@ -218,9 +242,10 @@ only thing that grows, and log groups expire after 30 days.
 
 ## Operations
 
-- **Reset an evaluator's password**: `aws cognito-idp admin-set-user-password --user-pool-id <pool> --username <email> --password '<temp>' --no-permanent` (they will be asked for a new one), or delete and recreate the login on the Setup tab.
-- **Stop an evaluator scoring**: Setup tab → Disable (reversible; scores kept). Delete login removes the account.
-- **Delete evaluator logins after the tryout**: Setup tab → Delete login (scores are kept, keyed by id only).
+- **Reset an evaluator's password**: `aws cognito-idp admin-set-user-password --user-pool-id <pool> --username <email> --password '<temp>' --no-permanent` (they will be asked for a new one), or delete and recreate the login on the Evaluators tab.
+- **Stop an evaluator scoring**: Evaluators tab → Disable (reversible; scores kept). Delete login removes the account (never for a convenor login).
+- **Delete evaluator logins after the tryout**: Evaluators tab → Delete login (scores are kept, keyed by id only).
+- **Fix a session that lists the wrong players**: the wrong team/group is on the session row; swap it. Leftover per-player colours: *Reset to default jerseys* in Attendance & jerseys, or re-add the team.
 - **Exports** land in `s3://<ExportsBucketName>/exports/<tryoutId>/<date>/`. Lifecycle expires them after 400 days.
 - **Tear down**: `cd infra && npx cdk destroy` (or `sam delete`). The table, user pool and exports bucket are
   retained on purpose; delete them by hand when you are sure.
@@ -236,13 +261,14 @@ only thing that grows, and log groups expire after 30 days.
   `Tryout.evaluatorAccess`) gates every write, also at the owner's request.
 - Players carry an optional `colour2` and sessions a `jersey` (`primary`/`secondary`) plus an `updateSession`
   mutation, so scrimmages can be played in the second jersey set without changing player identities.
-- Teams: `TRYOUT#/TEAM#<id>` rows (`name`, `colour`, `players` list) with `createTeam`, `updateTeam`, `deleteTeam`,
-  `setTeamPlayers`;
-  `Session.teams` (`[{ teamId, colour }]`, `setSessionTeams`). The write pipeline gained a step that reads the
-  session's team rosters live and rejects a score for a player not dressed. The front end derives
-  `teamColours`/`teamOf` per session in `normalizeTryout` and resolves precedence in `wornColour`:
-  per-player override, then the session's colour for the team (pre-filled from the team's own colour), then the
-  session's primary/secondary default.
+- Teams: `TRYOUT#/TEAM#<id>` rows (`name`, optional `colour`, `players` list) with `createTeam`, `updateTeam`,
+  `deleteTeam`, `setTeamPlayers`; `Session.teams` (`[{ teamId, colour? }]`) via `setSessionTeams`, a two-step
+  pipeline that reads the session type and caps the list (one group for skills, two teams otherwise). A session
+  entry with no colour means default jerseys even if the team has a colour. The write pipeline gained a step that
+  reads the session's team rosters live and rejects a score for a player not dressed. The front end derives
+  `teamColours`/`teamOf` per session in `normalizeTryout` and resolves precedence in `wornColour`: per-player
+  override, then the session's colour for the team (pre-filled from the team's own colour), then the session's
+  primary/secondary default. Assigning a coloured team drops per-player overrides for its players.
 - Per-session jersey colours: `Session.colours` (`{ playerNumber: colour }`, replaced whole by
   `setSessionColours`). Overrides win over the session's `jersey` default; the front end resolves the worn colour
   in one place (`wornColour` in `web/js/api.js`) for the evaluator grid, chips, sheet, admin tables and CSVs.
@@ -260,5 +286,11 @@ only thing that grows, and log groups expire after 30 days.
   any login in the admin group.
 - `updatePlayer` (position, secondary colour and/or tag) and `deletePlayer` (refused once the player has scores; a
   two-step pipeline checks GSI1 first) support registration changes before the tryout starts.
+- `changePlayerColour` changes the primary colour, i.e. the player's code: a three-step pipeline (refuse if the
+  player has scores, read the row, `TransactWriteItems` put-new + delete-old with a conflict check). The admin
+  page then carries the new code into team rosters, attendance sets and per-session colour maps.
+- `criteria.js` gained a `short` heading per criterion for the dense admin tables (full label on hover); CSV
+  headers still use the keys. The rankings cut line and the evaluator's *My rankings* are computed entirely in
+  the browser from data the caller is already allowed to see.
 - The Lambda runs Node 22 (Node 20 is deprecated for new functions).
 - Comparator sorts are done on the client because the APPSYNC_JS runtime does not allow them.
