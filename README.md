@@ -69,7 +69,11 @@ full-screen scoring sheet with the header and Save buttons pinned and a "scroll 
 rankings* (their own scores only, across sessions); *Players* (the full list with what each is wearing, editable
 behind a confirm since it shows for everyone). Absent and not-dressed players do not appear.
 
-**Rubric.** `web/js/criteria.js` is the single source of truth for criteria, weights, anchors and tiers. The
+**Rubric.** `web/js/criteria.js` is the single source of truth for criteria, weights, anchors and tiers. Skaters:
+Skating Speed and Skating Mobility (1.0 each, replacing Skating 1.5 and Coachability 0.5 as of 2026-09-16), Puck
+Control, Passing, Shooting, Hockey Sense (1.5), Compete Level (1.5), plus Defensive or Offensive Play; goalies:
+Crease Movement, Save Technique, Rebound Control, Game Awareness, Compete Level. Renaming a criterion key means
+scores stored under the old key are ignored by rankings, CSVs and the write resolver (unknown keys are stripped). The
 evaluator form, the admin rankings, the CSV headers, the resolvers (which strip unknown keys) and the tests all
 import it.
 

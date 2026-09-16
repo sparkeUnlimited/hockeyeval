@@ -21,7 +21,7 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
   let mod;
   before(async () => { mod = await loadResolver("Mutation.upsertEvaluation.1.loadContext.js"); });
 
-  const args = { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", scores: { skating: 4 }, clientId: "c-1" };
+  const args = { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", scores: { speed: 4 }, clientId: "c-1" };
 
   test("request fetches META, SESSION, PLAYER and the caller's access row in one BatchGetItem", () => {
     const req = mod.request(ctx({ args }));
@@ -219,7 +219,7 @@ describe("Mutation.upsertEvaluation step 2 (put)", () => {
 
   const baseArgs = {
     tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", clientId: "c-1",
-    scores: { skating: 4, sense: 5 }, tier: "A", notes: "Strong on the rush",
+    scores: { speed: 4, sense: 5 }, tier: "A", notes: "Strong on the rush",
   };
 
   test("evaluatorId comes from identity, not from args", () => {
@@ -238,15 +238,15 @@ describe("Mutation.upsertEvaluation step 2 (put)", () => {
   });
 
   test("unknown score keys and invalid values are stripped; position-specific keys respected", () => {
-    const args = { ...baseArgs, scores: { skating: 4, offence: 5, g_save: 3, bogus: 5, puck: 6, passing: 2.5, shooting: "4", sense: 1 } };
+    const args = { ...baseArgs, scores: { speed: 4, offence: 5, g_save: 3, bogus: 5, coachable: 4, puck: 6, passing: 2.5, shooting: "4", sense: 1 } };
     const req = mod.request(ctx({ args, stash: { position: "D" } }));
     const item = fromMapValues(req.attributeValues);
-    assert.deepEqual(item.scores, { skating: 4, sense: 1 }); // offence is F-only, g_save is G-only, others invalid
+    assert.deepEqual(item.scores, { speed: 4, sense: 1 }); // offence is F-only, g_save is G-only, others invalid
   });
 
   test("scores may arrive as a JSON string (AWSJSON) and are parsed", () => {
-    const req = mod.request(ctx({ args: { ...baseArgs, scores: JSON.stringify({ dzone: 3, skating: 2 }) }, stash: { position: "D" } }));
-    assert.deepEqual(fromMapValues(req.attributeValues).scores, { skating: 2, dzone: 3 });
+    const req = mod.request(ctx({ args: { ...baseArgs, scores: JSON.stringify({ dzone: 3, speed: 2 }) }, stash: { position: "D" } }));
+    assert.deepEqual(fromMapValues(req.attributeValues).scores, { speed: 2, dzone: 3 });
   });
 
   test("notes are capped at 280 characters and trimmed", () => {
@@ -271,12 +271,12 @@ describe("Mutation.upsertEvaluation step 2 (put)", () => {
 
   test("response maps the stored item to the Evaluation type", () => {
     const stored = {
-      playerNumber: "W-14", sessionId: SESSION, evaluatorId: EVALUATOR_SUB, scores: { skating: 4 },
+      playerNumber: "W-14", sessionId: SESSION, evaluatorId: EVALUATOR_SUB, scores: { speed: 4 },
       tier: "A", notes: null, updatedAt: "2026-09-13T00:00:00.000Z", clientId: "c-1", PK: "x", SK: "y", GSI1PK: "z",
     };
     const out = mod.response(ctx({ result: stored }));
     assert.deepEqual(out, {
-      playerNumber: "W-14", sessionId: SESSION, evaluatorId: EVALUATOR_SUB, scores: { skating: 4 },
+      playerNumber: "W-14", sessionId: SESSION, evaluatorId: EVALUATOR_SUB, scores: { speed: 4 },
       tier: "A", notes: null, updatedAt: "2026-09-13T00:00:00.000Z", clientId: "c-1",
     });
   });

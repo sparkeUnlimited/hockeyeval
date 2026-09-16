@@ -12,8 +12,10 @@ export const SCALE = {
 
 export const CRITERIA = [
   // Skaters (F and D)
-  { key: "skating",   label: "Skating",           short: "Skating", for: ["F", "D"], weight: 1.5,
-    help: "Stride power, top speed, edges, crossovers both ways, backward skating, stops/starts, transitions" },
+  { key: "speed",     label: "Skating Speed",     short: "Speed", for: ["F", "D"], weight: 1.0,
+    help: "Top speed, first three strides, acceleration out of stops and turns, keeps pace with the play" },
+  { key: "mobility",  label: "Skating Mobility",  short: "Mobility", for: ["F", "D"], weight: 1.0,
+    help: "Edges, crossovers both ways, tight turns, backward skating, pivots and transitions without losing speed" },
   { key: "puck",      label: "Puck Control",      short: "Puck", for: ["F", "D"], weight: 1.0,
     help: "Handles in traffic with head up, protects the puck, receives hard/bad passes, controls at speed" },
   { key: "passing",   label: "Passing",           short: "Passing", for: ["F", "D"], weight: 1.0,
@@ -24,8 +26,6 @@ export const CRITERIA = [
     help: "Positioning, anticipation, reads the play, supports the puck, makes the simple play" },
   { key: "compete",   label: "Compete Level",     short: "Compete", for: ["F", "D"], weight: 1.5,
     help: "Wins battles, back-checks every time, second effort, plays hard in drills not just games" },
-  { key: "coachable", label: "Coachability",      short: "Coach", for: ["F", "D", "G"], weight: 0.5,
-    help: "Listens, executes the drill as explained, first in line, positive with teammates" },
   // Defence extras
   { key: "dzone",     label: "Defensive Play",    short: "Defence", for: ["D"], weight: 1.0,
     help: "Gap control, angling, stick on puck, boxes out in front, first pass out of the zone" },

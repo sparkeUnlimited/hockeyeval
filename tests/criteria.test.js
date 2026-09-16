@@ -25,38 +25,38 @@ test("no criterion label or help text asks for a name", () => {
 
 test("a forward is scored only on forward criteria", () => {
   const keys = keysFor("F");
-  assert.deepEqual(keys, ["skating", "puck", "passing", "shooting", "sense", "compete", "coachable", "offence"]);
+  assert.deepEqual(keys, ["speed", "mobility", "puck", "passing", "shooting", "sense", "compete", "offence"]);
   assert.ok(!keys.includes("dzone"));
   assert.ok(!keys.some((k) => k.startsWith("g_")));
   // Scores on non-forward criteria are ignored
-  const withD = weightedScore("F", { skating: 5, dzone: 1, g_save: 1 });
+  const withD = weightedScore("F", { speed: 5, dzone: 1, g_save: 1 });
   assert.equal(withD, 5);
 });
 
-test("a defenceman gets dzone but not offence; a goalie gets only goalie criteria + coachability", () => {
+test("a defenceman gets dzone but not offence; a goalie gets only goalie criteria", () => {
   assert.ok(keysFor("D").includes("dzone"));
   assert.ok(!keysFor("D").includes("offence"));
-  assert.deepEqual(keysFor("G"), ["coachable", "g_skating", "g_save", "g_rebound", "g_sense", "g_compete"]);
+  assert.deepEqual(keysFor("G"), ["g_skating", "g_save", "g_rebound", "g_sense", "g_compete"]);
 });
 
 test("blank criteria are ignored", () => {
-  // Only skating (1.5) and passing (1.0) scored
-  const s = weightedScore("D", { skating: 4, passing: 2, puck: null, shooting: undefined });
+  // Only sense (1.5) and passing (1.0) scored
+  const s = weightedScore("D", { sense: 4, passing: 2, puck: null, shooting: undefined });
   assert.equal(s, (4 * 1.5 + 2 * 1.0) / 2.5);
 });
 
 test("weights are applied", () => {
-  // skating weight 1.5 vs shooting weight 1.0: a 5 in skating and 1 in shooting should lean toward 5
-  const s = weightedScore("F", { skating: 5, shooting: 1 });
+  // compete weight 1.5 vs shooting weight 1.0: a 5 in compete and 1 in shooting should lean toward 5
+  const s = weightedScore("F", { compete: 5, shooting: 1 });
   assert.equal(s, (5 * 1.5 + 1 * 1.0) / 2.5);
-  assert.ok(s > 3, "weighted toward skating");
+  assert.ok(s > 3, "weighted toward compete");
   // equal weights option gives plain mean
-  assert.equal(weightedScore("F", { skating: 5, shooting: 1 }, { equalWeights: true }), 3);
+  assert.equal(weightedScore("F", { compete: 5, shooting: 1 }, { equalWeights: true }), 3);
 });
 
 test("all-blank returns null", () => {
   assert.equal(weightedScore("F", {}), null);
-  assert.equal(weightedScore("F", { skating: null, puck: undefined }), null);
+  assert.equal(weightedScore("F", { speed: null, puck: undefined }), null);
   assert.equal(weightedScore("G", null), null);
   assert.equal(weightedScore("F", { dzone: 5 }), null, "only non-applicable keys → null");
 });
@@ -67,7 +67,7 @@ test("invalid values (0, 6, 3.5, strings) are treated as blank", () => {
   assert.equal(isValidScore(3.5), false);
   assert.equal(isValidScore("3"), false);
   assert.equal(isValidScore(3), true);
-  assert.equal(weightedScore("F", { skating: 6, puck: "4", passing: 3 }), 3);
+  assert.equal(weightedScore("F", { speed: 6, puck: "4", passing: 3 }), 3);
 });
 
 test("full sheet all 3s scores exactly 3 regardless of weights", () => {

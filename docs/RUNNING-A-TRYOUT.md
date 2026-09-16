@@ -225,13 +225,18 @@ phone until they sign in there again, but it is simpler to wait for green.
 
 ### Recommended session shape
 
-Skate 1 skills and skating (score skating, puck control, passing, shooting cleanly); skates 2 and 3 small-area
+Skate 1 skills and skating (score speed, mobility, puck control, passing, shooting cleanly); skates 2 and 3 small-area
 games and scrimmage (hockey sense, compete, position-specific criteria); the last skate scrimmage only, focused
 on bubble players. Before the last skate, use the rankings to give evaluators the numbers that need a second look.
 
 ---
 
 ## Reading the results
+
+**The rubric.** Skaters are scored on Skating Speed, Skating Mobility, Puck Control, Passing, Shooting, Hockey
+Sense, Compete Level and, by position, Defensive Play or Offensive Play; goalies on Crease Movement, Save
+Technique, Rebound Control, Game Awareness and Compete Level. (Speed and Mobility replaced Skating and Coachability
+on 16 September 2026; scores given under the old names are not counted anywhere and should be re-entered.)
 
 Sign in on a laptop or tablet. The **Rankings** tab shows one row per active player. Use *Refresh* at the top to
 pull the latest scores.
@@ -241,10 +246,10 @@ pull the latest scores.
 | Player / Pos | player code (with the AA badge if tagged) and position |
 | Sessions | ice times the player was on the ice for, out of the total (absent and not-dressed sessions do not count) |
 | Evals | how many evaluator-sessions scored this player |
-| Overall | weighted average of the scored criteria (skating, hockey sense and compete count 1.5×, coachability 0.5×), averaged across evaluations |
+| Overall | weighted average of the scored criteria (hockey sense and compete count 1.5×, everything else 1×), averaged across evaluations |
 | Spread | how much evaluators disagree on this player: the standard deviation of each evaluator's overall. Rows at 0.75 or more are highlighted |
 | A B C X | how many evaluators gave each tier |
-| Skating … Offensive Play | average score per criterion; `–` means not applicable to that position |
+| Speed … Offensive Play | average score per criterion; `–` means not applicable to that position |
 
 A player's overall is the **average** of the evaluations they actually received, so missing sessions never lowers
 their number. It just gives you fewer data points: read Sessions and Evals together. Two players with the same
