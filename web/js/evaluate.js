@@ -306,11 +306,22 @@ function openSheet(playerNumber) {
   $("notesCount").textContent = String(notes.value.length);
   for (const id of ["saveNext", "saveClose", "clearBtn"]) $(id).disabled = isReadOnly();
 
+  $("sheetCount").textContent = `${criteriaFor(p.position).length} skills to score, then tier and notes`;
   $("sheetBackdrop").hidden = false;
   $("sheet").hidden = false;
-  $("sheet").scrollTop = 0;
   document.body.style.overflow = "hidden";
+  $("sheetBody").scrollTop = 0;
+  requestAnimationFrame(updateMore);
 }
+
+/** Show "more below" until the evaluator has scrolled to the end of the sheet. */
+function updateMore() {
+  const body = $("sheetBody");
+  const more = body.scrollHeight - body.clientHeight - body.scrollTop > 8;
+  $("sheetMore").hidden = !more;
+}
+$("sheetBody").addEventListener("scroll", updateMore, { passive: true });
+window.addEventListener("resize", updateMore);
 
 function closeSheet() {
   flushNotes();
