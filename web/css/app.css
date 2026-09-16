@@ -34,7 +34,9 @@
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+/* The page itself never scrolls sideways; wide content scrolls inside its own container (.table-wrap, .chips, .tabs). */
+html { overflow-x: hidden; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); max-width: 100%; overflow-x: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.35; -webkit-text-size-adjust: 100%; }
 body { min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
@@ -220,7 +222,9 @@ tr.inactive td { opacity: .5; }
 .stat b { font-size: 1.4rem; }
 .toolbar { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: .75rem; }
 .toolbar label { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; }
-.toolbar select { width: auto; min-width: 140px; }
+.toolbar select { width: auto; min-width: 140px; max-width: 100%; }
+.toolbar label { max-width: 100%; flex-wrap: wrap; }
+select, input { max-width: 100%; }
 input[type=checkbox] { width: 24px; height: 24px; }
 .attend { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; }
 /* Collapsible setup cards */
