@@ -71,6 +71,12 @@ full-screen scoring sheet with the header and Save buttons pinned and a "scroll 
 rankings* (their own scores only, across sessions); *Players* (the full list with what each is wearing, editable
 behind a confirm since it shows for everyone). Absent, sitting and not-dressed players do not appear.
 
+**After the first cuts.** Players already known to be making the team get the *Made team* tag; the Attendance &
+jerseys card then offers *Sit the N who made the team* for the intra-squad scrimmage, which marks them *Sitting*
+for that session only (hidden from evaluators, unscoreable, not counted as attended). The rankings keep them
+visible with a *made team* pill but they never occupy a release spot. The convenor guide has the four-step
+walkthrough.
+
 **Rubric.** `web/js/criteria.js` is the single source of truth for criteria, weights, anchors and tiers. Skaters:
 Skating Speed and Skating Mobility (1.0 each, replacing Skating 1.5 and Coachability 0.5 as of 2026-09-16), Puck
 Control, Passing, Shooting, Hockey Sense (1.5), Compete Level (1.5), plus Defensive or Offensive Play; goalies:

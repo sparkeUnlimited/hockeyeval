@@ -240,6 +240,31 @@ Skate 1 skills and skating (score speed, mobility, puck control, passing, shooti
 games and scrimmage (hockey sense, compete, position-specific criteria); the last skate scrimmage only, focused
 on bubble players. Before the last skate, use the rankings to give evaluators the numbers that need a second look.
 
+### Holding out players who have made the team
+
+Once the first cuts are done you will usually run an intra-squad scrimmage where the players you already know are
+making the two teams sit and watch, so the ice time goes to the players still being decided. The app handles that
+in four steps (added 17 September 2026):
+
+1. **Tag them.** On the Setup tab, open *Players* and set the *Tag* dropdown to *Made team* for each of those
+   players. Evaluators see a blue *Made* badge on their cards from then on, and on the Rankings tab those players
+   are shown with a *made team* pill instead of keep or release: they stay in the list for comparison but never
+   take one of the release spots, so the numbers you enter in the cut line come out of the players still competing.
+2. **Sit them for the scrimmage.** Open *Attendance & jerseys*, pick the scrimmage, and press *Sit the N who made
+   the team*. The button only appears when at least one tagged player is still on the ice for that session, N
+   tells you how many, and it asks you to confirm before marking them all *Sitting*. It applies to that ice time
+   only: they still play every other session unless you sit them there too.
+3. **Fix up the odd one.** Each player's attendance is a *Present / Absent / Sitting* dropdown, so if a tagged
+   player is skating after all, set them back to *Present*; if someone untagged is also being rested, set them to
+   *Sitting* by hand. Sitting and Absent behave the same for evaluators (hidden, unscoreable, session not
+   counted); the difference is only what the record says afterwards.
+4. **Have evaluators reload once.** Anyone who already had the scoring screen open should pull down to refresh.
+   Their progress line then reads, for example, "0 of 16 scored this session · 9 sitting", and the *Players* panel
+   lists the sitting players as *sitting out*.
+
+Nothing about earlier sessions changes: scores already given to those players are kept, and their Sessions count
+simply does not include the scrimmage they sat out.
+
 ---
 
 ## Reading the results
