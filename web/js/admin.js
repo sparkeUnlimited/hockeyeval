@@ -200,7 +200,8 @@ function renderSetup() {
   fillColourSelect($("pColour2"), { allowNone: true, otherInput: $("pColour2Other") });
 
   const pb = $("playersBody"); pb.innerHTML = "";
-  const players = t.players.filter((p) => state.showInactive || p.active);
+  // Numerical order regardless of jersey colour; the code breaks ties when two colours share a number.
+  const players = t.players.filter((p) => state.showInactive || p.active).sort((a, b) => a.number - b.number || a.playerNumber.localeCompare(b.playerNumber));
   $("playerCount").textContent = `${t.players.filter((p) => p.active).length} active · ${t.players.filter((p) => !p.active).length} released`;
   for (const p of players) {
     // Secondary colour: dropdown that saves on change; "Other…" reveals a text box.
@@ -238,7 +239,7 @@ function renderSetup() {
     c1Other.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitC1Other(); } });
 
     pb.append(el("tr", { class: p.active ? "" : "inactive", "data-player": p.playerNumber },
-      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", "data-tag": p.tag, style: "margin-left:.4rem" }, tagLabel(p.tag)) : null),
+      el("td", {}, el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", "data-tag": p.tag, style: "margin-left:.4rem" }, tagLabel(p.tag)) : null),
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), c1Sel, c1Other),
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour2 || "")}` }), c2Sel, c2Other),
       el("td", { class: "num" }, String(p.number)), el("td", {}, posSel),
