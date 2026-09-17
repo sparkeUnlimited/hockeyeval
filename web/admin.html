@@ -73,8 +73,8 @@
         </form>
       </div>
       <div class="toolbar" style="margin-top:.75rem"><label><input id="showInactive" type="checkbox"> Show released players</label><span id="playerCount" class="muted small"></span></div>
-      <p class="small muted">Position, primary colour and secondary colour can be changed in the table (they save immediately). Changing the <b>primary colour changes the player's code</b> (W-433 becomes R-433) and is only possible while they have no scores; teams and sessions are updated to the new code. <b>Delete</b> only works for players with no scores yet; use <b>Release</b> once scoring has started. Tick <b>AA</b> for players still being considered for the AA team: evaluators see the badge on that player's card.</p>
-      <div class="table-wrap"><table><thead><tr><th>Player</th><th>Primary</th><th>Secondary</th><th class="num">No.</th><th>Pos</th><th>AA</th><th>Status</th><th></th></tr></thead><tbody id="playersBody"></tbody></table></div>
+      <p class="small muted">Position, primary colour and secondary colour can be changed in the table (they save immediately). Changing the <b>primary colour changes the player's code</b> (W-433 becomes R-433) and is only possible while they have no scores; teams and sessions are updated to the new code. <b>Delete</b> only works for players with no scores yet; use <b>Release</b> once scoring has started. <b>Tag</b>: choose <i>AA</i> for players still being considered for the AA team, or <i>Made team</i> once a player is known to be making the team. Evaluators see the badge on that player's card. Players who made the team are listed in the rankings but never in the release zone, and one button under <i>Attendance &amp; jerseys</i> sits them all out of a scrimmage.</p>
+      <div class="table-wrap"><table><thead><tr><th>Player</th><th>Primary</th><th>Secondary</th><th class="num">No.</th><th>Pos</th><th>Tag</th><th>Status</th><th></th></tr></thead><tbody id="playersBody"></tbody></table></div>
     </div>
 
     <div class="card" id="teamsCard">
@@ -128,7 +128,7 @@
       <div class="small muted" style="margin-bottom:.75rem">
         <p style="margin-bottom:.35rem">Pick a session, then set two things for that ice time only:</p>
         <ol style="margin:0 0 .35rem 1.2rem;padding:0">
-          <li><b>Attendance</b>: untick anyone who is not on the ice (injured, sick). They disappear from every evaluator's screen for this session, cannot be scored for it, and it does not count in their Sessions column. Tick them again if they turn up.</li>
+          <li><b>Attendance</b>: set anyone who is not on the ice to <i>Absent</i> (injured, sick) or <i>Sitting</i> (held out because they have already made the team). Either way they disappear from every evaluator's screen for this session, cannot be scored for it, and it does not count in their Sessions column. Set them back to <i>Present</i> if they turn up. The <i>Sit the N who made the team</i> button does this in one go for everyone tagged <i>Made team</i> in the Players table.</li>
           <li><b>Jerseys</b>: the dropdown on each player is the colour they are wearing today. For a skills night use the bulk row: <i>all forwards → White</i>, Apply, then <i>all defence → Red</i>, Apply. In a scrimmage the list is grouped by team and already shows the team colours; change a player here only if they are wearing something else (a borrowed jersey). <i>Reset to default jerseys</i> clears every colour set here for this session.</li>
         </ol>
         <p style="margin:0">Players not on one of a scrimmage's two teams are listed as <i>not dressed</i> and are hidden from evaluators. Evaluators see exactly the colours set here with the player's number; scores always stay with the player. A warning appears if two players would show as the same code.</p>
@@ -142,6 +142,7 @@
         <label>to <select id="bulkColour" class="colour-select"></select><input id="bulkColourOther" type="text" maxlength="20" placeholder="New colour" hidden></label>
         <button id="bulkApply" class="btn sm primary" type="button">Apply</button>
         <button id="bulkReset" class="btn sm" type="button" title="Remove every per-player colour for this session and go back to the session's default jersey set">Reset to default jerseys</button>
+        <button id="bulkSit" class="btn sm" type="button" hidden title="Mark every player tagged Made team as sitting this session out">Sit the players who made the team</button>
       </div>
       <p id="aClash" class="error small" hidden></p>
       <div id="attendGrid" class="attend"></div>
@@ -169,7 +170,7 @@
       <label title="AA-tagged players are a separate decision"><input id="cutExcludeAA" type="checkbox" checked> Exclude AA</label>
       <span id="cutSummary" class="small"></span>
     </div>
-    <p class="small muted">Overall = weighted average of the criteria that were scored, averaged across evaluations. Spread = standard deviation of each evaluator's overall for that player; rows at or above <span id="spreadThreshold"></span> are highlighted as disagreement worth a second look. Tap a column heading to sort. <b>Cut line</b>: within each position, the players with the lowest Overall who meet the minimums are shaded red as the release zone (the count you set); <b>bubble</b> marks anyone within 0.15 of the line on either side, and tied players at the line are all bubble. Players below the minimums, and AA players when excluded, sit in a grey group at the bottom and are not counted.</p>
+    <p class="small muted">Overall = weighted average of the criteria that were scored, averaged across evaluations. Spread = standard deviation of each evaluator's overall for that player; rows at or above <span id="spreadThreshold"></span> are highlighted as disagreement worth a second look. Tap a column heading to sort. <b>Cut line</b>: within each position, the players with the lowest Overall who meet the minimums are shaded red as the release zone (the count you set); <b>bubble</b> marks anyone within 0.15 of the line on either side, and tied players at the line are all bubble. Players below the minimums, and AA players when excluded, sit in a grey group at the bottom and are not counted. Players tagged <b>Made team</b> stay in the list for comparison but are never in the release zone and are not counted either.</p>
     <div class="table-wrap" style="max-height:75vh"><table id="rankTable"><thead id="rankHead"></thead><tbody id="rankBody"></tbody></table></div>
   </section>
 

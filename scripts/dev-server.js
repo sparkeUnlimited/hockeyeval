@@ -43,12 +43,18 @@ function applyUpdate(item, update) {
     }
     return item;
   }
-  m = update.expression.match(/^(ADD|DELETE) (\S+) (:\w+)$/); // string-set add/remove
-  if (m) {
-    const attr = names[m[2]] || m[2];
-    const set = new Set(item[attr] || []);
-    for (const v of values[m[3]]) (m[1] === "ADD" ? set.add(v) : set.delete(v));
-    if (set.size) item[attr] = [...set]; else delete item[attr];
+  // String-set add/remove: "ADD #a :p", "DELETE #a :p, #b :p", "ADD #a :p DELETE #b :p".
+  const clauses = [...update.expression.matchAll(/(ADD|DELETE) ((?:\S+ :\w+)(?:, \S+ :\w+)*)/g)];
+  if (clauses.length && clauses.map((c) => c[0]).join(" ") === update.expression) {
+    for (const [, op, actions] of clauses) {
+      for (const action of actions.split(",")) {
+        const [name, value] = action.trim().split(" ");
+        const attr = names[name] || name;
+        const set = new Set(item[attr] || []);
+        for (const v of values[value]) (op === "ADD" ? set.add(v) : set.delete(v));
+        if (set.size) item[attr] = [...set]; else delete item[attr];
+      }
+    }
     return item;
   }
   throw new Error(`mock: unsupported update ${update.expression}`);

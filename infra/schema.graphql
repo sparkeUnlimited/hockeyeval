@@ -57,6 +57,7 @@ type Session {
   order: Int!
   jersey: String!          # primary | secondary: the DEFAULT jersey colour for this session
   absent: [ID!]!           # playerNumbers marked absent for this session (hidden from evaluators, writes rejected)
+  sitting: [ID!]!          # playerNumbers sitting this session out (already made the team): hidden from evaluators, writes rejected
   colours: AWSJSON         # per-player overrides for this session: { "W-14": "Red", ... }. Wins over teams and jersey.
   teams: [SessionTeam!]!   # teams (scrimmage/game) or groups (skills) on the ice, max 2. Empty = everyone plays.
 }
@@ -145,9 +146,10 @@ type Mutation {
   # those, delete the player and add them again.
   updatePlayer(tryoutId: ID!, playerNumber: ID!, position: String, colour2: String, tag: String): Player!
     @aws_auth(cognito_groups: ["admin"])
-  # Mark a player present/absent for one session. Absent players are hidden from evaluators for that session
-  # and any score for them in that session is rejected, so a missed skate never counts as an evaluation.
-  setAttendance(tryoutId: ID!, sessionId: ID!, playerNumber: ID!, present: Boolean!): Session!
+  # Set a player's attendance for one session: present | absent | sitting. Absent (injured, sick) and sitting
+  # (already made the team, held out of a scrimmage) players are hidden from evaluators for that session and any
+  # score for them in it is rejected, so a missed skate never counts as an evaluation.
+  setAttendance(tryoutId: ID!, sessionId: ID!, playerNumber: ID!, status: String!): Session!
     @aws_auth(cognito_groups: ["admin"])
   createTeam(tryoutId: ID!, name: String!, colour: String): Team! @aws_auth(cognito_groups: ["admin"])
   # Rename a team and/or change its colour (omitted fields keep their value).

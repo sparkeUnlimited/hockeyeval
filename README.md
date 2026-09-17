@@ -61,13 +61,15 @@ colours for its players so the team colour actually wins.
 counts per position and minimum evaluations/sessions, tie-safe, with a *Not enough information* group),
 Evaluators (logins, allowlist toggles, *Score players yourself* so the convenor can evaluate with their own login,
 and every evaluator's scores and tendencies), Export and Close tryout. The Players table edits position, primary
-colour (only before scores; the row is moved atomically and references carried over), secondary colour and the AA
-tag in place, and deletes players that have no scores.
+colour (only before scores; the row is moved atomically and references carried over), secondary colour and the
+tag (AA, or *Made team* for players already known to be making the team) in place, and deletes players that have
+no scores. Attendance per session is Present / Absent / Sitting, with a one-tap button that sits every *Made team*
+player out of a scrimmage; made-team players stay in the rankings but are never in the release zone.
 
 **Evaluator screen.** Grid grouped by worn colour (labelled with the team in a scrimmage), each group foldable;
 full-screen scoring sheet with the header and Save buttons pinned and a "scroll down, there is more" marker; *My
 rankings* (their own scores only, across sessions); *Players* (the full list with what each is wearing, editable
-behind a confirm since it shows for everyone). Absent and not-dressed players do not appear.
+behind a confirm since it shows for everyone). Absent, sitting and not-dressed players do not appear.
 
 **Rubric.** `web/js/criteria.js` is the single source of truth for criteria, weights, anchors and tiers. Skaters:
 Skating Speed and Skating Mobility (1.0 each, replacing Skating 1.5 and Coachability 0.5 as of 2026-09-16), Puck
@@ -208,8 +210,9 @@ E2E_URL=https://xxxx.cloudfront.net E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... \
 E2E_EVALUATOR_EMAIL=... E2E_EVALUATOR_PASSWORD=... E2E_EVALUATOR_LABEL='Evaluator 1' node tests/e2e/dry-run.js
 ```
 
-The dry run (65 unit tests run separately) walks the whole flow: admin creates a tryout with 2 sessions and 12
-players, edits positions and colours, tags a player AA, marks one absent, sets skills-night jerseys by position,
+The dry run (66 unit tests run separately) walks the whole flow: admin creates a tryout with 2 sessions and 12
+players, edits positions and colours, tags a player AA, marks one absent, tags another *Made team* and sits them
+out of the scrimmage with one tap, sets skills-night jerseys by position,
 builds two teams and puts them on the scrimmage (plus a group on the skills session), moves a session date,
 changes a player's primary colour before any scores; an evaluator not yet on the list sees a read-only screen,
 is added, scores 6 players, goes offline, scores 3 more, comes back online, folds a colour group, checks *My
@@ -281,12 +284,14 @@ only thing that grows, and log groups expire after 30 days.
 - Per-session jersey colours: `Session.colours` (`{ playerNumber: colour }`, replaced whole by
   `setSessionColours`). Overrides win over the session's `jersey` default; the front end resolves the worn colour
   in one place (`wornColour` in `web/js/api.js`) for the evaluator grid, chips, sheet, admin tables and CSVs.
-- Per-session attendance: `Session.absent` (a DynamoDB string set edited with `setAttendance`). Absent players
-  are hidden from the evaluator grid for that session, `upsertEvaluation` rejects scores for them, and rankings
-  show sessions attended. Overall is an average over the evaluations received, so a missed skate never counts
-  against a player.
+- Per-session attendance: `Session.absent` and `Session.sitting` (DynamoDB string sets; `setAttendance` takes
+  `status: present | absent | sitting` and moves the player between them). Absent and sitting players are hidden
+  from the evaluator grid for that session, `upsertEvaluation` rejects scores for them, and rankings show sessions
+  attended. Overall is an average over the evaluations received, so a missed skate never counts against a player.
 - `Player.tag`: a short admin label (12 chars, letters/digits only, never free text) shown as a badge to
-  evaluators and in rankings; the UI exposes it as an "AA" checkbox for players still in AA contention.
+  evaluators and in rankings. The UI offers `AA` (still in AA contention) and `MADE` (has made the team; shown as
+  *Made team*, never in the release zone, and the target of the admin's "sit the players who made the team"
+  button, which loops `setAttendance` with `sitting`). `TAGS` in `web/js/api.js` defines the labels.
 - `setPlayerSessionColour`: any enabled evaluator (or admin) can change one player's worn colour for one
   session; a two-step pipeline checks the caller's allowlist row, then rewrites the session's colour map. The
   evaluator screen's Players panel uses it behind a confirm.

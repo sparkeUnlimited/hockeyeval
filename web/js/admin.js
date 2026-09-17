@@ -1,7 +1,7 @@
 // Convenor dashboard: setup, rankings, per-evaluator view, CSV export, close.
 // Everything here is by player number only. There is no name field anywhere and no place to type one.
 import { requireAuth, signOut } from "./auth.js";
-import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, wornColour, isAbsent, isPlaying, teamNameOf, deriveTeams, AuthError } from "./api.js";
+import { gql, fetchAllEvaluations, registerServiceWorker, Q_CURRENT_TRYOUT_ADMIN, normalizeTryout, swatchColour, wornCode, wornColour, isAbsent, isSitting, isPlaying, teamNameOf, deriveTeams, TAGS, tagLabel, AuthError } from "./api.js";
 import { CRITERIA, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
 registerServiceWorker();
@@ -105,7 +105,7 @@ function computeRankings() {
   const pm = playerMap();
   const stats = evaluatorStats(equalWeights);
   const sessions = state.tryout?.sessions || [];
-  const players = (state.tryout?.players || []).filter((p) => p.active && (position === "all" || p.position === position) && (!taggedOnly || p.tag));
+  const players = (state.tryout?.players || []).filter((p) => p.active && (position === "all" || p.position === position) && (!taggedOnly || p.tag === "AA"));
   const rows = [];
   for (const p of players) {
     const evs = state.evals.filter((e) => e.playerNumber === p.playerNumber && (sessionId === "all" || e.sessionId === sessionId));
@@ -219,9 +219,11 @@ function renderSetup() {
       ...["F", "D", "G"].map((x) => el("option", { value: x, selected: x === p.position }, x)));
     posSel.addEventListener("change", () => updatePlayer(p, { position: posSel.value }));
 
-    const tagBox = el("input", { type: "checkbox", "aria-label": `AA candidate ${p.playerNumber}` });
-    tagBox.checked = p.tag === "AA";
-    tagBox.addEventListener("change", () => updatePlayer(p, { tag: tagBox.checked ? "AA" : "" }));
+    // Tag: AA (still in AA contention) or Made team (sits out scrimmages, never in the release zone).
+    const tagSel = el("select", { class: "sm", "aria-label": `Tag for ${p.playerNumber}` },
+      el("option", { value: "" }, "None"), ...TAGS.map((t) => el("option", { value: t.value, title: t.title }, t.label)));
+    tagSel.value = TAGS.some((t) => t.value === p.tag) ? p.tag : "";
+    tagSel.addEventListener("change", () => updatePlayer(p, { tag: tagSel.value }));
 
     // Primary colour: changing it changes the player's code. Only possible before they have scores.
     const c1Sel = el("select", { class: "colour-select sm", "aria-label": `Primary colour for ${p.playerNumber}` });
@@ -236,11 +238,11 @@ function renderSetup() {
     c1Other.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commitC1Other(); } });
 
     pb.append(el("tr", { class: p.active ? "" : "inactive", "data-player": p.playerNumber },
-      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", style: "margin-left:.4rem" }, p.tag) : null),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", "data-tag": p.tag, style: "margin-left:.4rem" }, tagLabel(p.tag)) : null),
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), c1Sel, c1Other),
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour2 || "")}` }), c2Sel, c2Other),
       el("td", { class: "num" }, String(p.number)), el("td", {}, posSel),
-      el("td", {}, tagBox),
+      el("td", {}, tagSel),
       el("td", {}, el("span", { class: `pill ${p.active ? "ok" : "bad"}` }, p.active ? "active" : "released")),
       el("td", {}, el("div", { class: "row", style: "flex-wrap:nowrap" },
         el("button", { class: "btn sm", type: "button", onclick: () => setActive(p, !p.active) }, p.active ? "Release" : "Reinstate"),
@@ -313,7 +315,7 @@ $("sType").addEventListener("change", () => { $("sJersey").value = $("sType").va
 async function updateSession(session, patch, okText) {
   await run(async () => {
     const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $label: String, $date: AWSDate, $type: String, $jersey: String) {
-      updateSession(tryoutId: $tryoutId, sessionId: $sessionId, label: $label, date: $date, type: $type, jersey: $jersey) { id label date type order jersey absent colours teams { teamId colour } } }`,
+      updateSession(tryoutId: $tryoutId, sessionId: $sessionId, label: $label, date: $date, type: $type, jersey: $jersey) { id label date type order jersey absent sitting colours teams { teamId colour } } }`,
       { tryoutId: state.tryout.id, sessionId: session.id, label: patch.label ?? null, date: patch.date ?? null, type: patch.type ?? null, jersey: patch.jersey ?? null });
     Object.assign(session, data.updateSession);
     normalizeTryout(state.tryout); // also parses the colours map
@@ -481,9 +483,10 @@ async function changePlayerColour(p, colour) {
       }
     }
     for (const sess of state.tryout.sessions) {
-      if ((sess.absent || []).includes(oldPn)) {
-        await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $playerNumber: ID!, $present: Boolean!) { setAttendance(tryoutId: $tryoutId, sessionId: $sessionId, playerNumber: $playerNumber, present: $present) { id } }`, { tryoutId: state.tryout.id, sessionId: sess.id, playerNumber: oldPn, present: true });
-        await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $playerNumber: ID!, $present: Boolean!) { setAttendance(tryoutId: $tryoutId, sessionId: $sessionId, playerNumber: $playerNumber, present: $present) { id } }`, { tryoutId: state.tryout.id, sessionId: sess.id, playerNumber: moved.playerNumber, present: false });
+      const status = (sess.absent || []).includes(oldPn) ? "absent" : (sess.sitting || []).includes(oldPn) ? "sitting" : null;
+      if (status) {
+        await gql(M_ATTENDANCE, { tryoutId: state.tryout.id, sessionId: sess.id, playerNumber: oldPn, status: "present" });
+        await gql(M_ATTENDANCE, { tryoutId: state.tryout.id, sessionId: sess.id, playerNumber: moved.playerNumber, status });
       }
       if (sess.colours && oldPn in sess.colours) {
         const next = { ...sess.colours }; next[moved.playerNumber] = next[oldPn]; delete next[oldPn];
@@ -521,7 +524,7 @@ function renderAttendance() {
   if (!session) { $("aSummary").textContent = "Add a session first."; $("aClash").hidden = true; return; }
   fillColourSelect($("bulkColour"), { otherInput: $("bulkColourOther") });
   const players = t.players.filter((p) => p.active);
-  let absent = 0;
+  let absent = 0, sitting = 0;
   const overrides = Object.keys(session.colours || {}).length;
   // Team sessions: group the grid by team, then list who is not dressed.
   const hasTeams = !!session.teamColours;
@@ -534,11 +537,13 @@ function renderAttendance() {
   for (const g of groups) {
   if (g.title) grid.append(el("h4", {}, g.title, g.notDressed ? el("span", { class: "muted small", style: "font-weight:400;margin-left:.5rem" }, "(hidden from evaluators)") : null));
   for (const p of g.players) {
-    const away = isAbsent(session, p);
-    if (away && !g.notDressed) absent += 1;
-    const box = el("input", { type: "checkbox", "aria-label": `${p.playerNumber} present` });
-    box.checked = !away;
-    box.addEventListener("change", () => setAttendance(session, p, box.checked));
+    const status = isAbsent(session, p) ? "absent" : isSitting(session, p) ? "sitting" : "present";
+    if (!g.notDressed) { if (status === "absent") absent += 1; if (status === "sitting") sitting += 1; }
+    // Present / Absent / Sitting for this session only.
+    const attSel = el("select", { class: "sm attend-status", "aria-label": `${p.playerNumber} attendance` },
+      el("option", { value: "present" }, "Present"), el("option", { value: "absent" }, "Absent"), el("option", { value: "sitting", title: "Held out of this session (already made the team)" }, "Sitting"));
+    attSel.value = status;
+    attSel.addEventListener("change", () => setAttendance(session, p, attSel.value));
     // Per-player jersey colour for THIS session. Saves the whole map on change.
     const cSel = el("select", { class: "colour-select", "aria-label": `Jersey colour for ${p.playerNumber} in ${session.label}` });
     const cOther = el("input", { type: "text", maxlength: "20", placeholder: "New colour", hidden: true, "aria-label": `New jersey colour for ${p.playerNumber}` });
@@ -553,18 +558,21 @@ function renderAttendance() {
     if (g.notDressed) {
       grid.append(el("label", { class: "dressed-no", "data-attend": p.playerNumber },
         el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("span", { class: "code" }, p.playerNumber),
-        el("span", { class: "muted small" }, p.position), p.tag ? el("span", { class: "tagpill" }, p.tag) : null));
+        el("span", { class: "muted small" }, p.position), p.tag ? el("span", { class: "tagpill", "data-tag": p.tag }, tagLabel(p.tag)) : null));
       continue;
     }
-    grid.append(el("label", { class: away ? "absent" : "", "data-attend": p.playerNumber }, box,
+    grid.append(el("label", { class: status === "present" ? "" : status, "data-attend": p.playerNumber }, attSel,
       el("span", { class: "swatch", style: `background:${swatchColour(wornColour(session, p))}` }),
       el("span", { class: "code" }, wornCode(session, p)),
       el("span", { class: "muted small" }, `${p.position}${p.playerNumber !== wornCode(session, p) ? ` · ${p.playerNumber}` : ""}`),
-      p.tag ? el("span", { class: "tagpill" }, p.tag) : null, cSel, cOther));
+      p.tag ? el("span", { class: "tagpill", "data-tag": p.tag }, tagLabel(p.tag)) : null, cSel, cOther));
   }
   }
   const dressed = players.filter((p) => !hasTeams || (p.playerNumber in session.teamColours)).length;
-  $("aSummary").textContent = `${dressed - absent} present · ${absent} absent${hasTeams ? ` · ${players.length - dressed} not dressed` : ""} · ${overrides ? `${overrides} colour${overrides === 1 ? "" : "s"} set per player${hasTeams ? " (overriding team colours; Reset to default jerseys clears them)" : ""}` : hasTeams ? "team colours" : `default ${session.jersey} jerseys`}`;
+  const madeOnIce = players.filter((p) => p.tag === "MADE" && (!hasTeams || (p.playerNumber in session.teamColours)) && !isSitting(session, p)).length;
+  $("bulkSit").hidden = !madeOnIce;
+  $("bulkSit").textContent = `Sit the ${madeOnIce} who made the team`;
+  $("aSummary").textContent = `${dressed - absent - sitting} present · ${absent} absent${sitting ? ` · ${sitting} sitting` : ""}${hasTeams ? ` · ${players.length - dressed} not dressed` : ""} · ${overrides ? `${overrides} colour${overrides === 1 ? "" : "s"} set per player${hasTeams ? " (overriding team colours; Reset to default jerseys clears them)" : ""}` : hasTeams ? "team colours" : `default ${session.jersey} jerseys`}`;
   const clash = jerseyClashes(session);
   $("aClash").hidden = !clash.length;
   $("aClash").textContent = clash.length ? `Two players would show as the same code: ${clash.join(", ")}. Give one of them a different colour.` : "";
@@ -586,6 +594,22 @@ $("bulkApply").addEventListener("click", () => {
 $("bulkReset").addEventListener("click", () => {
   const session = state.tryout?.sessions.find((s) => s.id === state.attendSessionId);
   if (session) setSessionColours(session, {}, `${session.label} back to default ${session.jersey} jerseys.`);
+});
+// One tap: everyone tagged "Made team" who is dressed for this session sits it out.
+$("bulkSit").addEventListener("click", async () => {
+  const session = state.tryout?.sessions.find((s) => s.id === state.attendSessionId);
+  if (!session) return;
+  const dressed = (x) => !session.teamColours || (x.playerNumber in session.teamColours);
+  const who = state.tryout.players.filter((p) => p.active && p.tag === "MADE" && dressed(p) && !isSitting(session, p));
+  if (!who.length) { msg("Nobody tagged Made team is on the ice for this session.", "bad"); return; }
+  if (!confirm(`Sit ${who.length} player${who.length === 1 ? "" : "s"} who made the team for ${session.label}? They will be hidden from evaluators for this session: ${who.map((p) => p.playerNumber).join(", ")}.`)) return;
+  await run(async () => {
+    for (const p of who) {
+      const data = await gql(M_ATTENDANCE, { tryoutId: state.tryout.id, sessionId: session.id, playerNumber: p.playerNumber, status: "sitting" });
+      session.absent = data.setAttendance.absent; session.sitting = data.setAttendance.sitting;
+    }
+    renderAttendance(); renderRankings();
+  }, `${who.length} player${who.length === 1 ? "" : "s"} sitting out ${session.label}.`);
 });
 
 // ----------------------------------------------------------------------------- Teams
@@ -748,14 +772,15 @@ async function setSessionColours(session, colours, okText) {
   }, okText || `Jersey colours updated for ${session.label}.`);
 }
 
-async function setAttendance(session, p, present) {
+const M_ATTENDANCE = `mutation($tryoutId: ID!, $sessionId: ID!, $playerNumber: ID!, $status: String!) {
+  setAttendance(tryoutId: $tryoutId, sessionId: $sessionId, playerNumber: $playerNumber, status: $status) { id absent sitting } }`;
+
+async function setAttendance(session, p, status) {
   await run(async () => {
-    const data = await gql(`mutation($tryoutId: ID!, $sessionId: ID!, $playerNumber: ID!, $present: Boolean!) {
-      setAttendance(tryoutId: $tryoutId, sessionId: $sessionId, playerNumber: $playerNumber, present: $present) { id absent } }`,
-      { tryoutId: state.tryout.id, sessionId: session.id, playerNumber: p.playerNumber, present });
-    session.absent = data.setAttendance.absent;
+    const data = await gql(M_ATTENDANCE, { tryoutId: state.tryout.id, sessionId: session.id, playerNumber: p.playerNumber, status });
+    session.absent = data.setAttendance.absent; session.sitting = data.setAttendance.sitting;
     renderAttendance(); renderRankings();
-  }, `${p.playerNumber} marked ${present ? "present" : "absent"} for ${session.label}.`);
+  }, `${p.playerNumber} marked ${status} for ${session.label}.`);
 }
 
 async function setActive(p, active) {
@@ -810,16 +835,19 @@ const BUBBLE_MARGIN = 0.15;
 /**
  * Cut line per position. Eligible = meets the minimums (and not AA when excluded) with an Overall.
  * The lowest `cut[pos]` eligible players are "release"; others "keep". Anyone within BUBBLE_MARGIN of the
- * line, and every player tied at the line, is "bubble". Sets r.cut, r.bubble, r.eligible on each row.
+ * line, and every player tied at the line, is "bubble". Players tagged Made team are "made": listed with
+ * everyone else but never in the release zone and never counted. Sets r.cut, r.bubble, r.eligible on each row.
  */
 function applyCut(rows) {
   const c = state.cut;
-  const summary = { line: {}, release: 0, bubble: 0, insufficient: 0 };
+  const summary = { line: {}, release: 0, bubble: 0, insufficient: 0, made: 0 };
   for (const r of rows) {
-    r.eligible = r.overall !== null && r.n >= c.minEvals && r.attended >= c.minSessions && !(c.excludeAA && r.tag);
-    r.cut = r.eligible ? "keep" : "insufficient";
+    r.made = r.tag === "MADE";
+    r.eligible = !r.made && r.overall !== null && r.n >= c.minEvals && r.attended >= c.minSessions && !(c.excludeAA && r.tag === "AA");
+    r.cut = r.made ? "made" : r.eligible ? "keep" : "insufficient";
     r.bubble = false;
-    if (!r.eligible) summary.insufficient += 1;
+    if (r.made) summary.made += 1;
+    else if (!r.eligible) summary.insufficient += 1;
   }
   for (const pos of ["F", "D", "G"]) {
     const n = Number(c[pos]) || 0;
@@ -893,16 +921,16 @@ function renderRankings() {
   head.append(tr);
   const cutSummary = applyCut(rows);
   const sortedAll = sortRows(rows, state.rank.sortKey, state.rank.sortDir);
-  // Eligible players first (in the chosen order), then the not-enough-information group.
-  const sorted = [...sortedAll.filter((r) => r.eligible), ...sortedAll.filter((r) => !r.eligible)];
+  // Eligible players and those who made the team first (in the chosen order), then the not-enough-information group.
+  const sorted = [...sortedAll.filter((r) => r.eligible || r.made), ...sortedAll.filter((r) => !r.eligible && !r.made)];
   let lineDrawn = false;
   let groupHeaderDone = false;
   for (const r of sorted) {
-    if (!r.eligible && !groupHeaderDone) {
+    if (!r.eligible && !r.made && !groupHeaderDone) {
       groupHeaderDone = true;
       body.append(el("tr", { class: "group-row" }, el("td", { colspan: cols.length }, `Not enough information (${cutSummary.insufficient}): fewer than ${state.cut.minEvals} evaluations or ${state.cut.minSessions} sessions${state.cut.excludeAA ? ", or AA" : ""}. Not counted in the cut.`)));
     }
-    const cls = [r.spread !== null && r.spread >= SPREAD_THRESHOLD ? "disagree" : "", r.cut === "release" ? "release" : "", r.eligible ? "" : "insufficient"];
+    const cls = [r.spread !== null && r.spread >= SPREAD_THRESHOLD ? "disagree" : "", r.cut === "release" ? "release" : "", r.made ? "made" : r.eligible ? "" : "insufficient"];
     // Heavy line above the first release row when the table is sorted by Overall (high to low) for one position.
     if (!lineDrawn && r.cut === "release" && state.rank.position !== "all" && state.rank.sortKey === "overall" && state.rank.sortDir === "desc") { cls.push("cut-line"); lineDrawn = true; }
     const row = el("tr", { class: cls.filter(Boolean).join(" ") });
@@ -911,11 +939,12 @@ function renderRankings() {
       let text;
       if (c.key === "cut") {
         const cell = el("td", {});
-        if (r.eligible) cell.append(el("span", { class: `pill ${r.cut}` }, r.cut));
+        if (r.eligible || r.made) cell.append(el("span", { class: `pill ${r.cut}`, title: r.made ? "Made the team: not counted in the cut" : null }, r.made ? "made team" : r.cut));
         if (r.bubble) cell.append(el("span", { class: "pill bubble", style: "margin-left:.3rem" }, "bubble"));
         row.append(cell); continue;
       }
-      if (c.key === "playerNumber") { row.append(el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(r.colour)}` }), el("b", {}, r.playerNumber), r.tag ? el("span", { class: "tagpill", style: "margin-left:.4rem" }, r.tag) : null)); continue; }
+      // The Cut column already says "made team", so only the AA badge is repeated next to the code here.
+      if (c.key === "playerNumber") { row.append(el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(r.colour)}` }), el("b", {}, r.playerNumber), r.tag && !r.made ? el("span", { class: "tagpill", "data-tag": r.tag, style: "margin-left:.4rem" }, tagLabel(r.tag)) : null)); continue; }
       if (c.key === "attended") { row.append(el("td", { class: "num" }, `${r.attended}/${r.sessionsTotal}`)); continue; }
       if (c.crit) text = criteriaFor(r.position).some((x) => x.key === c.crit) ? fmt(v) : "–";
       else if (c.key === "overall" || c.key === "spread") text = fmt(v);
@@ -928,7 +957,7 @@ function renderRankings() {
   const evaluated = rows.filter((r) => r.n > 0).length;
   $("rSummary").textContent = `${rows.length} players · ${evaluated} with evaluations · ${state.evals.length} evaluations total · group mean ${fmt(stats.group.mean)}`;
   const lines = Object.entries(cutSummary.line).map(([pos, v]) => `${pos} ${fmt(v)}`).join(" · ");
-  $("cutSummary").textContent = `${cutSummary.release} in the release zone${lines ? ` · line at ${lines}` : ""} · ${cutSummary.bubble} bubble${cutSummary.tied ? ` (${cutSummary.tied} tied at the line, not released: decide these)` : ""} · ${cutSummary.insufficient} not enough information`;
+  $("cutSummary").textContent = `${cutSummary.release} in the release zone${lines ? ` · line at ${lines}` : ""} · ${cutSummary.bubble} bubble${cutSummary.tied ? ` (${cutSummary.tied} tied at the line, not released: decide these)` : ""}${cutSummary.made ? ` · ${cutSummary.made} made the team` : ""} · ${cutSummary.insufficient} not enough information`;
 }
 
 // Cut controls (remembered on this browser)
@@ -1022,7 +1051,7 @@ function rankingsCsv() {
   const header = ["player_number", "cut", "colour", "number", "position", "tag", "sessions_attended", "sessions_total", "evaluations", "evaluators",
     ...crits.map((c) => `avg_${c.key}`), "overall", "tier_A", "tier_B", "tier_C", "tier_X", "spread"];
   const sorted = sortRows(rows, state.rank.sortKey, state.rank.sortDir);
-  const data = sorted.map((r) => [r.playerNumber, r.eligible ? `${r.cut}${r.bubble ? " bubble" : ""}` : "insufficient", r.colour, r.number, r.position, r.tag || "", r.attended, r.sessionsTotal, r.n, r.evaluators,
+  const data = sorted.map((r) => [r.playerNumber, r.made ? "made" : r.eligible ? `${r.cut}${r.bubble ? " bubble" : ""}` : "insufficient", r.colour, r.number, r.position, r.tag || "", r.attended, r.sessionsTotal, r.n, r.evaluators,
     ...crits.map((c) => (r.crit[c.key] === null || r.crit[c.key] === undefined ? "" : fmt(r.crit[c.key], 3))),
     fmt(r.overall, 3), r.tiers.A, r.tiers.B, r.tiers.C, r.tiers.X, fmt(r.spread, 3)]);
   const meta = [`# ${state.tryout.name}`, `session=${state.rank.sessionId}`, `position=${state.rank.position}`,

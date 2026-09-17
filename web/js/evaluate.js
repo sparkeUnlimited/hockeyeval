@@ -3,7 +3,7 @@ import { requireAuth, signOut, store } from "./auth.js";
 import {
   gql, enqueueEvaluation, subscribe, flush, startSyncLoop, setCurrentUser, onSynced, retryFailed, failedEntries,
   registerServiceWorker, NetworkError, AuthError, Q_CURRENT_TRYOUT, Q_MY_EVALS, normalizeTryout, parseScores, swatchColour,
-  wornColour, wornCode, isAbsent, isPlaying, teamNameOf,
+  wornColour, wornCode, isAbsent, isSitting, isPlaying, teamNameOf, tagInfo, tagLabel, tagShort,
 } from "./api.js";
 import { SCALE, TIERS, criteriaFor, weightedScore, NOTES_MAX } from "./criteria.js";
 
@@ -237,7 +237,7 @@ function renderCard(grid, p) {
     );
     if (done) btn.append(el("span", { class: "check", "aria-hidden": "true" }, "✓"));
     if (e?.tier) btn.append(el("span", { class: "tier" }, e.tier));
-    if (p.tag) btn.append(el("span", { class: "tag", title: p.tag === "AA" ? "Still being considered for the AA team" : p.tag }, p.tag));
+    if (p.tag) btn.append(el("span", { class: "tag", "data-tag": p.tag, title: tagInfo(p.tag).title }, tagShort(p.tag)));
     grid.append(btn);
   }
 }
@@ -246,8 +246,9 @@ function renderProgress() {
   const all = activePlayers();
   const scored = all.filter((p) => hasContent(state.evals[p.playerNumber])).length;
   const absent = (state.tryout?.players || []).filter((p) => p.active && isAbsent(currentSession(), p)).length;
-  const notDressed = (state.tryout?.players || []).filter((p) => p.active && !isAbsent(currentSession(), p) && !isPlaying(currentSession(), p)).length;
-  $("progressText").textContent = `${scored} of ${all.length} scored this session${absent ? ` · ${absent} absent` : ""}${notDressed ? ` · ${notDressed} not dressed` : ""}`;
+  const sitting = (state.tryout?.players || []).filter((p) => p.active && !isAbsent(currentSession(), p) && isSitting(currentSession(), p)).length;
+  const notDressed = (state.tryout?.players || []).filter((p) => p.active && !isAbsent(currentSession(), p) && !isSitting(currentSession(), p) && !isPlaying(currentSession(), p)).length;
+  $("progressText").textContent = `${scored} of ${all.length} scored this session${absent ? ` · ${absent} absent` : ""}${sitting ? ` · ${sitting} sitting` : ""}${notDressed ? ` · ${notDressed} not dressed` : ""}`;
   $("progressBar").style.width = all.length ? `${(scored / all.length) * 100}%` : "0";
 }
 
@@ -263,7 +264,7 @@ function openSheet(playerNumber) {
   $("sheetNum").textContent = codeOf(p);
   $("sheetPos").textContent = `· ${p.position}`;
   const tagEl = $("sheetTag");
-  tagEl.hidden = !p.tag; tagEl.textContent = p.tag || "";
+  tagEl.hidden = !p.tag; tagEl.textContent = tagLabel(p.tag); tagEl.dataset.tag = p.tag || "";
   // When this session uses the secondary jersey, remind the evaluator of the player's usual code.
   const alt = $("sheetAlt");
   const team = teamNameOf(currentSession(), p);
@@ -493,7 +494,7 @@ function renderMyRankings() {
   list.forEach((r, i) => {
     body.append(el("tr", {},
       el("td", { class: "num" }, String(i + 1)),
-      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(r.player.colour)}` }), el("b", {}, r.player.playerNumber), r.player.tag ? el("span", { class: "tagpill", style: "margin-left:.3rem" }, r.player.tag) : null),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(r.player.colour)}` }), el("b", {}, r.player.playerNumber), r.player.tag ? el("span", { class: "tagpill", "data-tag": r.player.tag, style: "margin-left:.3rem" }, tagLabel(r.player.tag)) : null),
       el("td", {}, r.player.position),
       el("td", { class: "num" }, String(r.sessions)),
       el("td", { class: "num" }, r.avg === null ? "–" : r.avg.toFixed(2)),
@@ -555,9 +556,9 @@ function renderPlayersPanel() {
       if (!confirm(`Change ${p.playerNumber} to ${colour} for ${session.label}? They will show as ${code} for every evaluator.`)) { renderPlayersPanel(); return; }
       await setWorn(session, p, colour);
     });
-    const status = isAbsent(session, p) ? "absent" : !isPlaying(session, p) ? "not dressed" : "on the ice";
+    const status = isAbsent(session, p) ? "absent" : isSitting(session, p) ? "sitting out" : !isPlaying(session, p) ? "not dressed" : "on the ice";
     body.append(el("tr", { "data-player": p.playerNumber, class: status === "on the ice" ? "" : "inactive" },
-      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", style: "margin-left:.3rem" }, p.tag) : null),
+      el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(p.colour)}` }), el("b", {}, p.playerNumber), p.tag ? el("span", { class: "tagpill", "data-tag": p.tag, style: "margin-left:.3rem" }, tagLabel(p.tag)) : null),
       el("td", {}, p.position),
       el("td", { class: "small" }, `${p.colour}${p.colour2 ? ` / ${p.colour2}` : ""}`),
       el("td", {}, el("span", { class: "swatch", style: `background:${swatchColour(worn)}` }), sel),

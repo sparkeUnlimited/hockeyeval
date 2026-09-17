@@ -236,7 +236,7 @@ export function registerServiceWorker() {
 // ----------------------------------------------------------------------------- Queries used by both screens
 export const Q_CURRENT_TRYOUT = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order jersey absent colours teams { teamId colour } }
+  sessions { id label date type order jersey absent sitting colours teams { teamId colour } }
   players { playerNumber colour colour2 number position active tag }
   teams { id name colour players }
 } }`;
@@ -244,7 +244,7 @@ export const Q_CURRENT_TRYOUT = `query { currentTryout {
 /** Admin variant: also lists who may score this tryout (admin-only field). */
 export const Q_CURRENT_TRYOUT_ADMIN = `query { currentTryout {
   id name season status createdAt canEvaluate
-  sessions { id label date type order jersey absent colours teams { teamId colour } }
+  sessions { id label date type order jersey absent sitting colours teams { teamId colour } }
   players { playerNumber colour colour2 number position active tag }
   teams { id name colour players }
   evaluatorAccess { evaluatorId enabled updatedAt }
@@ -296,6 +296,23 @@ export function isAbsent(session, player) {
   return !!session && Array.isArray(session.absent) && session.absent.includes(player.playerNumber);
 }
 
+/** True when the player is sitting the session out (already made the team, held out of a scrimmage). */
+export function isSitting(session, player) {
+  return !!session && Array.isArray(session.sitting) && session.sitting.includes(player.playerNumber);
+}
+
+/**
+ * Player tags the convenor can set. Stored upper-case in `Player.tag`; shown as a badge to evaluators.
+ * MADE = has made the team already, so they sit out later scrimmages and are never in the release zone.
+ */
+export const TAGS = [
+  { value: "AA", label: "AA", short: "AA", title: "Still being considered for the AA team" },
+  { value: "MADE", label: "Made team", short: "Made", title: "Has made the team: sits out scrimmages and is never in the release zone" },
+];
+export const tagInfo = (tag) => (tag ? TAGS.find((t) => t.value === tag) || { value: tag, label: tag, short: tag, title: tag } : null);
+export const tagLabel = (tag) => tagInfo(tag)?.label || "";
+export const tagShort = (tag) => tagInfo(tag)?.short || "";
+
 /**
  * From a session's team list and the tryout's rosters, derive who is dressed and in what colour.
  * Attached to the session as `teamColours` ({ playerNumber: colour }) and `teamOf` ({ playerNumber: teamName }).
@@ -320,10 +337,10 @@ export function deriveTeams(session, teams) {
   return session;
 }
 
-/** True when the player is dressed for the session: on one of its teams (or the session has no teams) and not absent. */
+/** True when the player is dressed for the session: on one of its teams (or the session has no teams), not absent, not sitting. */
 export function isPlaying(session, player) {
   if (!session) return true;
-  if (isAbsent(session, player)) return false;
+  if (isAbsent(session, player) || isSitting(session, player)) return false;
   if (session.teamColours && !(player.playerNumber in session.teamColours)) return false;
   return true;
 }

@@ -231,7 +231,7 @@ export function toPlayer(item) {
 export function toSession(item) {
   return {
     id: item.sessionId, label: item.label, date: item.date, type: item.type, order: item.order,
-    jersey: item.jersey || "primary", absent: item.absent || [], colours: item.colours || {}, teams: item.teams || [],
+    jersey: item.jersey || "primary", absent: item.absent || [], sitting: item.sitting || [], colours: item.colours || {}, teams: item.teams || [],
   };
 }
 

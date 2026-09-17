@@ -153,9 +153,9 @@ try {
 
   // ------------------------------------------------------------------ Admin: edit position, add one via dropdowns, delete
   const rowB03 = admin.locator('#playersBody tr[data-player="B-03"]');
-  await rowB03.locator("select").last().selectOption("F"); // position select is the last select in the row
+  await rowB03.locator('select[aria-label^="Position"]').selectOption("F");
   await expectMsg(admin, "B-03 updated");
-  assert((await admin.locator('#playersBody tr[data-player="B-03"] select').last().inputValue()) === "F", "position change persisted");
+  assert((await admin.locator('#playersBody tr[data-player="B-03"] select[aria-label^="Position"]').inputValue()) === "F", "position change persisted");
   await rowB03.locator('select[aria-label^="Secondary colour"]').selectOption("Orange");
   await expectMsg(admin, "B-03 updated");
   assert((await rowB03.locator('select[aria-label^="Secondary colour"]').inputValue()) === "Orange", "secondary colour persisted (primary untouched)");
@@ -173,11 +173,12 @@ try {
   log("position edited, secondary colour edited, player added with default colours and deleted");
 
   // Tag W-09 as AA and mark W-12 absent for session 1
-  await admin.locator('#playersBody tr[data-player="W-09"] input[type=checkbox]').check();
+  await admin.locator('#playersBody tr[data-player="W-09"] select[aria-label^="Tag"]').selectOption("AA");
   await expectMsg(admin, "W-09 updated");
   await admin.selectOption("#aSession", { index: 0 });
-  await admin.locator('#attendGrid label[data-attend="W-12"] input[type=checkbox]').uncheck();
+  await admin.locator('#attendGrid label[data-attend="W-12"] select.attend-status').selectOption("absent");
   await expectMsg(admin, "W-12 marked absent");
+  assert(/absent/.test(await admin.locator('#attendGrid label[data-attend="W-12"]').getAttribute("class")), "absent row is styled");
   assert(/1 absent/.test(await admin.locator("#aSummary").textContent()), "attendance summary shows 1 absent");
   log("W-09 tagged AA; W-12 marked absent for session 1");
 
@@ -186,7 +187,7 @@ try {
   await admin.selectOption("#bulkColour", "Red");
   await admin.click("#bulkApply");
   await expectMsg(admin, "Defence set to Red");
-  await admin.locator('#attendGrid label[data-attend="W-01"] select').selectOption("Green");
+  await admin.locator('#attendGrid label[data-attend="W-01"] select.colour-select').selectOption("Green");
   await expectMsg(admin, "Jersey colours updated");
   assert(/4 colours set/.test(await admin.locator("#aSummary").textContent()), "summary counts per-player colours (3 D + 1 G; B-03 is a forward now)");
   assert(await admin.locator("#aClash").isHidden(), "no code clashes");
@@ -229,7 +230,7 @@ try {
   assert(await t1.locator('label[data-roster="B-08"].on').count() === 1, "member label is marked");
   // A stale per-player colour on the scrimmage (W-14 -> Yellow) must not survive a team assignment
   await admin.selectOption("#aSession", { index: 1 });
-  await admin.locator('#attendGrid label[data-attend="W-14"] select').selectOption("Yellow");
+  await admin.locator('#attendGrid label[data-attend="W-14"] select.colour-select').selectOption("Yellow");
   await expectMsg(admin, "Jersey colours updated");
   const scrim = admin.locator("#sessionsBody tr").filter({ has: admin.locator('input[value="Skate 2 – Scrimmage"]') });
   await scrim.locator('select[aria-label^="Add team"]').selectOption({ label: "Team 1" });
@@ -270,6 +271,22 @@ try {
   const t1b = admin.locator("#teamsList details.team").filter({ has: admin.locator('input[value="Team 1"]') });
   assert(await t1b.locator('label[data-roster="G-10"] input').isChecked(), "Team 1 roster now lists G-10");
   log("B-10 primary colour changed to Green -> G-10; team roster carried over");
+
+  // Made team: B-15 (defence, Team 2) is known to be making the team, so they sit out the scrimmage in one tap
+  await admin.locator('#playersBody tr[data-player="B-15"] select[aria-label^="Tag"]').selectOption("MADE");
+  await expectMsg(admin, "B-15 updated");
+  assert(/Made team/.test(await admin.locator('#playersBody tr[data-player="B-15"] .tagpill').textContent()), "Made team badge on the player row");
+  await admin.selectOption("#aSession", { index: 1 });
+  await admin.locator("#bulkSit:not([hidden])").waitFor({ timeout: 10000 });
+  assert(/Sit the 1 who made the team/.test(await admin.locator("#bulkSit").textContent()), `sit button counts the made-team players on the ice: ${await admin.locator("#bulkSit").textContent()}`);
+  await admin.click("#bulkSit"); // confirm() auto-accepted
+  await expectMsg(admin, "1 player sitting out");
+  assert(/1 sitting/.test(await admin.locator("#aSummary").textContent()), `summary counts the sitting player: ${await admin.locator("#aSummary").textContent()}`);
+  assert((await admin.locator('#attendGrid label[data-attend="B-15"] select.attend-status').inputValue()) === "sitting", "B-15 shows as sitting");
+  assert(await admin.locator("#bulkSit").isHidden(), "sit button goes away once everyone who made the team is sitting");
+  await admin.selectOption("#aSession", { index: 0 });
+  assert((await admin.locator('#attendGrid label[data-attend="B-15"] select.attend-status').inputValue()) === "present", "sitting applies to the scrimmage only");
+  log("B-15 tagged Made team and sat out of the scrimmage with one tap");
 
   // ------------------------------------------------------------------ Evaluator: score 6 online
   await ev.reload();
@@ -331,10 +348,12 @@ try {
   await ev.selectOption("#sessionSelect", { index: 1 });
   await ev.locator('.player[aria-label^="W-14"]').waitFor({ timeout: 10000 }); // grid re-renders after the session loads
   const codes2 = await ev.locator(".player").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label").split(" ")[0]));
-  assert(codes2.length === 11, `11 players dressed for the scrimmage, saw ${codes2.length}: ${codes2.join(" ")}`);
+  assert(codes2.length === 10, `10 players on the ice for the scrimmage, saw ${codes2.length}: ${codes2.join(" ")}`);
   assert(!codes2.some((c) => c.endsWith("-17")), "B-17 (on no team) is hidden in the scrimmage");
+  assert(!codes2.some((c) => c.endsWith("-15")), "B-15 (sitting, made the team) is hidden in the scrimmage");
+  assert(/1 sitting/.test(await ev.locator("#progressText").textContent()), `progress mentions the sitting player: ${await ev.locator("#progressText").textContent()}`);
   assert(codes2.includes("R-04") && codes2.includes("R-03") && codes2.includes("R-08"), `Team 1 wears Red: ${codes2.join(" ")}`);
-  assert(codes2.includes("W-14") && codes2.includes("W-01") && codes2.includes("W-15") && codes2.includes("W-12"), `Team 2 wears White: ${codes2.join(" ")}`);
+  assert(codes2.includes("W-14") && codes2.includes("W-01") && codes2.includes("W-12"), `Team 2 wears White: ${codes2.join(" ")}`);
   const chips2 = await ev.locator("#chips .chip").allTextContents();
   assert(chips2.some((c) => /Red · Team 1/.test(c)) && chips2.some((c) => /White · Team 2/.test(c)), `chips name the teams: ${chips2.join(",")}`);
   assert(/not dressed/.test(await ev.locator("#progressText").textContent()), "progress mentions not-dressed players");
@@ -453,7 +472,9 @@ try {
   assert((await b17.locator("td").nth(3).textContent()) === "1/2", "B-17 played 1 of 2 (not dressed for the scrimmage)");
 
   // Cut line: with the defaults (2 evals, 3 sessions) nobody qualifies in this short run; loosen to 1/1 and release 2 F
-  assert(/12 not enough information/.test(await admin.locator("#cutSummary").textContent()), `defaults exclude everyone in a 2-session run: ${await admin.locator("#cutSummary").textContent()}`);
+  assert(/1 made the team/.test(await admin.locator("#cutSummary").textContent()) && /11 not enough information/.test(await admin.locator("#cutSummary").textContent()), `defaults exclude everyone in a 2-session run, made-team player listed separately: ${await admin.locator("#cutSummary").textContent()}`);
+  const b15 = admin.locator('#rankBody tr', { hasText: "B-15" });
+  assert(/made team/.test(await b15.locator(".pill").first().textContent()) && (await b15.locator("td").nth(3).textContent()) === "1/2", "B-15 is marked made team and the sat-out scrimmage does not count as a session");
   await admin.fill("#cutMinEvals", "1"); await admin.fill("#cutMinSessions", "1"); await admin.fill("#cutF", "2"); await admin.fill("#cutD", "0");
   await admin.selectOption("#rPosition", "F");
   // Four forwards tie at 4.00 and one sits at 3.00: releasing 2 would split the tie, so only the 3.00 is released and the tie is bubble

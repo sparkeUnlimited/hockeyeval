@@ -74,6 +74,16 @@ describe("Mutation.upsertEvaluation step 1 (load context)", () => {
     assert.equal(c.stash.position, "D", "absent list for other players does not block");
   });
 
+  test("a player sitting the session out (already made the team) cannot be scored in it", () => {
+    const r = rows("open");
+    r.data.TryoutTable[1].sitting = ["W-14"];
+    throwsType(() => mod.response(ctx({ args, result: r })), "Sitting", /sitting/i);
+    r.data.TryoutTable[1].sitting = ["B-07"];
+    const c = ctx({ args, result: r });
+    mod.response(c);
+    assert.equal(c.stash.position, "D", "sitting list for other players does not block");
+  });
+
   test("step 1 stashes the session's teams for the team check", () => {
     const r = rows("open");
     r.data.TryoutTable[1].teams = [{ teamId: "team1", colour: "Red" }];
@@ -342,7 +352,7 @@ describe("admin-only resolvers re-check the admin group (defence in depth)", () 
       ["Mutation.updateSession.js", { tryoutId: TRYOUT, sessionId: SESSION, jersey: "secondary" }],
       ["Mutation.setPlayerActive.js", { tryoutId: TRYOUT, playerNumber: "W-14", active: false }],
       ["Mutation.updatePlayer.js", { tryoutId: TRYOUT, playerNumber: "W-14", position: "D" }],
-      ["Mutation.setAttendance.js", { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: false }],
+      ["Mutation.setAttendance.js", { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", status: "absent" }],
       ["Mutation.setSessionColours.js", { tryoutId: TRYOUT, sessionId: SESSION, colours: { "W-14": "Red" } }],
       ["Mutation.createTeam.js", { tryoutId: TRYOUT, name: "Team 1" }],
       ["Mutation.updateTeam.js", { tryoutId: TRYOUT, teamId: "team1", colour: "Red" }],
@@ -577,20 +587,26 @@ describe("Mutation.createTryout / addSession / setPlayerActive / closeTryout", (
     throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, playerNumber: "W-14" } })), "BadRequest", /Nothing/);
   });
 
-  test("setAttendance adds to / removes from the session's absent string set", async () => {
+  test("setAttendance moves a player between the session's absent and sitting string sets", async () => {
     const mod = await loadResolver("Mutation.setAttendance.js");
-    const absent = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: false } }));
+    const absent = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", status: "absent" } }));
     assert.equal(absent.operation, "UpdateItem");
-    assert.equal(absent.update.expression, "ADD #absent :p");
+    assert.equal(absent.update.expression, "ADD #absent :p DELETE #sitting :p");
     assert.deepEqual(absent.update.expressionValues[":p"], { SS: ["W-14"] });
+    assert.deepEqual(absent.update.expressionNames, { "#absent": "absent", "#sitting": "sitting" });
     assert.deepEqual(fromMapValues(absent.key), { PK: `TRYOUT#${TRYOUT}`, SK: `SESSION#${SESSION}` });
-    const present = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", present: true } }));
-    assert.equal(present.update.expression, "DELETE #absent :p");
-    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "Smith-14", present: false } })), "BadRequest", /playerNumber/);
-    const out = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "skills", order: 1, absent: ["W-14"] } }));
+    const sitting = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", status: "sitting" } }));
+    assert.equal(sitting.update.expression, "ADD #sitting :p DELETE #absent :p");
+    const present = mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", status: "present" } }));
+    assert.equal(present.update.expression, "DELETE #absent :p, #sitting :p");
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "W-14", status: "benched" } })), "BadRequest", /status/);
+    throwsType(() => mod.request(ctx({ identity: adminIdentity(), args: { tryoutId: TRYOUT, sessionId: SESSION, playerNumber: "Smith-14", status: "absent" } })), "BadRequest", /playerNumber/);
+    const out = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "skills", order: 1, absent: ["W-14"], sitting: ["B-07"] } }));
     assert.deepEqual(out.absent, ["W-14"]);
+    assert.deepEqual(out.sitting, ["B-07"]);
     const none = mod.response(ctx({ result: { sessionId: SESSION, label: "L", date: "2026-09-20", type: "skills", order: 1 } }));
     assert.deepEqual(none.absent, [], "absent defaults to an empty list");
+    assert.deepEqual(none.sitting, [], "sitting defaults to an empty list");
   });
 
   test("setSessionColours replaces the per-player colour map after validating keys and values", async () => {

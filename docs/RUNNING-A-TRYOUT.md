@@ -60,9 +60,12 @@ CSV and paste it. The app refuses any other layout, so a roster with names canno
 
 - **Position** is a dropdown on each row. Change it and it saves immediately.
 - **Secondary colour** is a dropdown on each row too.
-- **AA**: tick it for a player who is injured during the spring AA tryouts and still being considered there.
-  Evaluators see a small AA badge on that player's card and on the scoring sheet, the same as the note on the
-  paper sheets today, and the Rankings tab has an *AA only* filter to look at them as a group.
+- **Tag** is a dropdown with two choices. *AA* is for a player who is injured during the spring AA tryouts and
+  still being considered there; evaluators see a small AA badge on that player's card and on the scoring sheet,
+  the same as the note on the paper sheets today, and the Rankings tab has an *AA only* filter to look at them
+  as a group. *Made team* is for a player you already know is making the team: they get a blue *Made* badge,
+  they stay in the rankings for comparison but are never in the release zone, and the *Sit the players who made
+  the team* button under *Attendance & jerseys* holds all of them out of a scrimmage in one tap (see section 6).
 - **Delete** removes a player entered by mistake or with the wrong number, as long as nobody has scored them yet.
   After that the app refuses and you *Release* them instead (they disappear from evaluators and rankings, scores
   kept; *Reinstate* brings them back).
@@ -112,10 +115,17 @@ them absent.
 
 Under *Attendance & jerseys*, pick a session. For that ice time only:
 
-- **Attendance**: untick anyone who is not on the ice (injured, sick). They disappear from every evaluator's
-  screen for that session, cannot be scored for it (the app refuses, even if someone tries), and it does not count
-  in their Sessions column. Tick them again if they turn up. In a team session the list is grouped by team, with
-  the not-dressed players greyed at the bottom.
+- **Attendance**: each player has a *Present / Absent / Sitting* dropdown. Set anyone who is not on the ice to
+  *Absent* (injured, sick) or *Sitting* (held out on purpose, because they have already made the team). Either
+  way they disappear from every evaluator's screen for that session, cannot be scored for it (the app refuses,
+  even if someone tries), and it does not count in their Sessions column. Set them back to *Present* if they turn
+  up. In a team session the list is grouped by team, with the not-dressed players greyed at the bottom.
+- **Sitting the players who have made the team**: once you know who is making the team, tag them *Made team* in
+  the Players table. Then, on the scrimmage where they are sitting, press *Sit the N who made the team*: the
+  button shows how many are still on the ice for that session, asks you to confirm, and marks them all *Sitting*
+  for that session only. They still play every other session unless you sit them there too, and their earlier
+  scores are untouched. Evaluators see "N sitting" on their progress line and the *Players* panel shows those
+  players as *sitting out*.
 - **Jerseys**: the dropdown on each player is the colour they are wearing today. For a skills night dressed by
   position, use the bulk row: *all forwards → White*, Apply, then *all defence → Red*, Apply. In a scrimmage the
   list already shows the team colours; change a player here only if they are wearing something else (a borrowed
@@ -170,7 +180,8 @@ F / D / G) and a grid of big buttons, one per player on the ice, showing the col
 number and the position. The grid is split into one group per colour, labelled with the team in a scrimmage
 ("Red · Team 1"); each group header shows how many of them the evaluator has scored, and tapping it folds the
 group away, which is handy when an evaluator is assigned to one team. Players with the AA tag carry a small AA
-badge. Absent and not-dressed players do not appear at all.
+badge and players tagged Made team a blue *Made* badge. Absent, sitting and not-dressed players do not appear at
+all.
 
 Tapping a player opens a full-screen scoring sheet. The player header stays pinned at the top and says how many
 skills there are ("8 skills to score, then tier and notes"); the Save buttons stay pinned at the bottom; the
@@ -186,14 +197,14 @@ rows scroll in between, with an amber "scroll down, there is more" marker until 
   *Clear* wipes that player for this session.
 
 Every tap is saved on the phone immediately. Nothing is lost if the phone locks or the Wi-Fi drops. The bottom
-line shows progress: "14 of 38 scored this session · 2 absent · 6 not dressed". Scored players get a green border,
+line shows progress: "14 of 38 scored this session · 2 absent · 3 sitting · 6 not dressed". Scored players get a green border,
 a check mark and their tier letter.
 
 Evaluators can only ever see their own scores. They cannot see other evaluators, combined rankings or the
 convenor pages. If they re-score a player in the same session, the new scores replace the old ones.
 
 **Players.** The *Players* button lists every active player with number, position, default jerseys, what they
-are wearing in the selected session and whether they are on the ice, absent or not dressed. If a player turns up
+are wearing in the selected session and whether they are on the ice, absent, sitting out or not dressed. If a player turns up
 in a different colour, the evaluator can change *Wearing* for that session: the app asks them to confirm, because
 the change shows for every evaluator (and on your Attendance & jerseys grid). Adding, removing or renumbering
 players, and the primary colour, stay with you.
@@ -218,7 +229,7 @@ scores are kept and still count. *Enable* reverses it. You do not need to delete
 - **Red "Offline"**: no connection at all. Keep scoring; it will catch up.
 - **Red "Sign in again"**: their login expired (after about a month). Scores are safe; sign in again and they sync.
 - **Red "rejected"**: the server refused something: the tryout was closed, the evaluator was disabled, or the
-  player was marked absent or not dressed for that session. Tapping the dot shows why.
+  player was marked absent, sitting or not dressed for that session. Tapping the dot shows why.
 
 Ask evaluators not to sign out while the dot is amber. If they try, the app warns them; the scores stay on the
 phone until they sign in there again, but it is simpler to wait for green.
@@ -243,8 +254,9 @@ pull the latest scores.
 
 | Column | Meaning |
 |---|---|
-| Player / Pos | player code (with the AA badge if tagged) and position |
-| Sessions | ice times the player was on the ice for, out of the total (absent and not-dressed sessions do not count) |
+| Player / Pos | player code (with the AA or Made team badge if tagged) and position |
+| Cut | keep, release or bubble once the cut line is set; *made team* for players tagged Made team |
+| Sessions | ice times the player was on the ice for, out of the total (absent, sitting and not-dressed sessions do not count) |
 | Evals | how many evaluator-sessions scored this player |
 | Overall | weighted average of the scored criteria (hockey sense and compete count 1.5×, everything else 1×), averaged across evaluations |
 | Spread | how much evaluators disagree on this player: the standard deviation of each evaluator's overall. Rows at 0.75 or more are highlighted |
@@ -278,8 +290,11 @@ position (for example 8 F, 3 D, 0 G) and the minimum a player needs to be counte
   summary line says so. Those are the players to decide with the coaches, or to watch at the last skate.
 - Players below the minimums, and AA-tagged players while *Exclude AA* is ticked, sit in a grey **Not enough
   information** group at the bottom and are not counted. AA players are a separate decision anyway.
+- Players tagged **Made team** stay in the main list (lightly shaded blue, with a *made team* pill) so you can
+  still compare them, but they are never in the release zone and do not take a spot in the count. The release
+  count you enter always comes out of the players still competing.
 - The cut uses whatever the table shows, so the weights and normalise toggles apply, and the rankings CSV gets a
-  `cut` column (keep, release, bubble, insufficient) with the settings recorded on its first line.
+  `cut` column (keep, release, bubble, made, insufficient) with the settings recorded on its first line.
 
 The release zone is only as good as the ice time behind it: keep an eye on the Sessions and Evals columns next
 to the shading.
@@ -339,8 +354,8 @@ logins cannot create stray evaluations. Old tryouts stay in storage but are no l
   delete and recreate their login on the Evaluators tab (their old scores are kept).
 - **An evaluator sees "not on the evaluator list"**: on the Evaluators tab, click *Add to tryout* or *Enable*
   next to their label, then have them reload.
-- **An evaluator cannot see a player**: the player is absent or not dressed for that session. Check *Attendance
-  & jerseys* for the session, and the team or group on the session row. Reloading the evaluator screen picks up
+- **An evaluator cannot see a player**: the player is absent, sitting or not dressed for that session. Check
+  *Attendance & jerseys* for the session, and the team or group on the session row. Reloading the evaluator screen picks up
   the change.
 - **Only some of the players are listed for a session** (13 of 24, say): the wrong team or group is on that
   session row. Remove it with its ✕ and add the right one; everyone in it appears immediately.
@@ -361,4 +376,4 @@ logins cannot create stray evaluations. Old tryouts stay in storage but are no l
   cached. Reload the page (pull down on the phone); the current version keeps the page fixed and only scrolls
   tables and chips inside their own box.
 - **The dot stays red after the Wi-Fi is back**: tap it. "Sign in again" means the login expired; "rejected" shows
-  the reason (a closed tryout, a disabled evaluator, or a player marked absent or not dressed).
+  the reason (a closed tryout, a disabled evaluator, or a player marked absent, sitting or not dressed).
